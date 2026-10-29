@@ -5,8 +5,8 @@ import { SignOutButton } from "@/core/auth/components/sign-out-button";
 import { withNext } from "@/core/auth/redirect";
 import { requireClaims } from "@/core/auth/session";
 import { invitePath, routes } from "@/core/config/routes";
-import { InvitationResponse } from "@/core/tenancy/components/invitation-buttons";
-import { getInvitation } from "@/core/tenancy/members";
+import { InvitationResponse } from "@/core/tenancy/components/invitation-response";
+import { getInvitation } from "@/core/tenancy/invitations";
 import { ROLE_LABELS } from "@/core/tenancy/roles";
 import { ButtonLink } from "@/core/ui/links";
 

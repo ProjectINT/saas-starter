@@ -1,5 +1,7 @@
 "use client";
 
+import type { MembersForm } from "../members-store";
+
 import { Copy, Plus } from "@gravity-ui/icons";
 import {
   Button,
@@ -14,23 +16,24 @@ import {
   TextField,
   toast,
 } from "@heroui/react";
-import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { useForm } from "palistor";
+import { type FormEvent } from "react";
 
+import { textFieldProps } from "@/core/ui/field-props";
 import { Notice } from "@/core/ui/notice";
+import { EMAIL_MAX_LENGTH, normalizeEmail } from "@/core/validation/email";
 
-import { createInvitation } from "../invitation-actions";
-import { initialInviteState } from "../invite-state";
-import { ROLE_LABELS, assignableRoles, isAccountRole, type AccountRole } from "../roles";
+import { ROLE_LABELS, assignableRoles, isAccountRole } from "../roles";
 
 import { useAccount } from "./account-provider";
 
-/** "Invite member" button with the invitation dialog. Render only with members.invite. */
-export function InviteMemberDialog() {
-  // A new key on every opening resets the form and its action state.
-  const [formKey, setFormKey] = useState(0);
+type Invite = MembersForm["invite"];
 
+/** "Invite member" button with the invitation dialog. Render only with members.invite. */
+export function InviteMemberDialog({ invite }: { invite: Invite }) {
   return (
-    <Modal onOpenChange={(isOpen) => isOpen && setFormKey((key) => key + 1)}>
+    // Every opening starts from an empty form.
+    <Modal onOpenChange={(isOpen) => isOpen && invite.reset()}>
       <Button size="sm">
         <Plus className="size-4" />
         Invite member
@@ -39,10 +42,9 @@ export function InviteMemberDialog() {
         <Modal.Container size="sm">
           <Modal.Dialog>
             {({ close }) => (
-              <InviteForm
-                key={formKey}
+              <InviteDialogContent
+                invite={invite}
                 onClose={close}
-                onInviteAnother={() => setFormKey((key) => key + 1)}
               />
             )}
           </Modal.Dialog>
@@ -52,75 +54,71 @@ export function InviteMemberDialog() {
   );
 }
 
-function InviteForm({ onClose, onInviteAnother }: { onClose: () => void; onInviteAnother: () => void }) {
-  const { account, role: myRole } = useAccount();
-  const roles = assignableRoles(myRole);
-  const [state, formAction, isPending] = useActionState(createInvitation.bind(null, account.id), initialInviteState);
-  const [email, setEmail] = useState("");
-  // The least privileged role by default.
-  const [role, setRole] = useState<AccountRole>(roles[roles.length - 1]);
+function InviteDialogContent({ invite, onClose }: { invite: Invite; onClose: () => void }) {
+  const form = useForm(invite);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const formData = new FormData(event.currentTarget);
-
-    startTransition(() => formAction(formData));
-  }
-
-  if (state.invitePath) {
+  if (form.link.value) {
     return (
       <InviteLink
-        email={state.values.email.trim()}
-        path={state.invitePath}
+        email={normalizeEmail(form.email.value)}
+        path={form.link.value}
         onClose={onClose}
-        onInviteAnother={onInviteAnother}
+        onInviteAnother={() => form.reset()}
       />
     );
   }
 
-  // A server error stays only while its field holds the submitted value.
-  const current: Record<string, string> = { email, role };
-  const serverErrors = Object.fromEntries(
-    Object.entries(state.errors).filter(([field]) => current[field] === state.values[field])
+  return (
+    <InviteForm
+      invite={invite}
+      onClose={onClose}
+    />
   );
+}
+
+function InviteForm({ invite, onClose }: { invite: Invite; onClose: () => void }) {
+  const { account, role: myRole } = useAccount();
+  const form = useForm(invite);
+  const roles = assignableRoles(myRole);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void form.submit();
+  }
 
   return (
     <Form
       className="contents"
-      validationErrors={serverErrors}
+      validationBehavior="aria"
       onSubmit={handleSubmit}
     >
       <Modal.Header>
         <Modal.Heading>Invite to {account.name}</Modal.Heading>
       </Modal.Header>
       <Modal.Body className="flex flex-col gap-4">
-        {state.formError && <Notice>{state.formError}</Notice>}
+        {form.formError.value && <Notice>{form.formError.value}</Notice>}
         <TextField
-          isRequired
           autoFocus
-          maxLength={254}
-          name="email"
+          maxLength={EMAIL_MAX_LENGTH}
           type="email"
-          value={email}
-          onChange={setEmail}
+          {...textFieldProps(form.email)}
         >
           <Label>Email</Label>
           <Input placeholder="colleague@example.com" />
-          <FieldError />
+          <FieldError>{form.email.errorMessage}</FieldError>
         </TextField>
         <Select
-          isRequired
-          name="role"
-          value={role}
-          onChange={(key) => isAccountRole(key) && setRole(key)}
+          isInvalid={Boolean(form.role.isInvalid)}
+          isRequired={form.role.isRequired}
+          value={form.role.value}
+          onChange={(key) => isAccountRole(key) && form.role.onValueChange(key)}
         >
           <Label>Role</Label>
           <Select.Trigger>
             <Select.Value />
             <Select.Indicator />
           </Select.Trigger>
-          <FieldError />
+          <FieldError>{form.role.errorMessage}</FieldError>
           <Select.Popover>
             <ListBox>
               {roles.map((item) => (
@@ -145,7 +143,7 @@ function InviteForm({ onClose, onInviteAnother }: { onClose: () => void; onInvit
           Cancel
         </Button>
         <Button
-          isPending={isPending}
+          isPending={form.submitting}
           type="submit"
         >
           Create invitation

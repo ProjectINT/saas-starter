@@ -1,77 +1,50 @@
 "use client";
 
 import { Button, Description, FieldError, Form, Input, InputGroup, Label, TextField } from "@heroui/react";
-import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useForm, useStoreContext } from "palistor";
+import { useState, type FormEvent } from "react";
 
+import { textFieldProps } from "@/core/ui/field-props";
 import { Notice } from "@/core/ui/notice";
-import { SLUG_HINT, SLUG_MAX_LENGTH, slugify, validateSlug } from "@/core/validation/slug";
+import { ACCOUNT_NAME_MAX_LENGTH } from "@/core/validation/account-name";
+import { SLUG_HINT, SLUG_MAX_LENGTH } from "@/core/validation/slug";
 
-import { createAccount } from "../create-account";
-import { initialCreateAccountState } from "../create-account-errors";
+import { createAccountStore, type CreateAccountContext } from "../create-account-store";
 
 /** Account name + URL slug. The slug follows the name until edited by hand. */
 export function CreateAccountForm({ urlPrefix }: { urlPrefix: string }) {
-  const [state, formAction, isPending] = useActionState(createAccount, initialCreateAccountState);
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [isSlugEdited, setIsSlugEdited] = useState(false);
+  const router = useRouter();
+  const [store] = useState(createAccountStore);
 
-  function handleNameChange(value: string) {
-    setName(value);
+  useStoreContext(store, { router } satisfies CreateAccountContext);
 
-    if (!isSlugEdited) {
-      setSlug(slugify(value));
-    }
-  }
+  const { account: form } = useForm(store);
 
-  function handleSlugChange(value: string) {
-    setSlug(value.toLowerCase());
-    setIsSlugEdited(value !== "");
-  }
-
-  // Submitting through onSubmit (not `action`) keeps React from resetting the
-  // fields when the server returns errors.
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    const formData = new FormData(event.currentTarget);
-
-    startTransition(() => formAction(formData));
+    void form.submit();
   }
-
-  // A server error stays only while its field holds the submitted value. HeroUI
-  // clears it on typing, but not when the slug changes because the name did.
-  const current: Record<string, string> = { name, slug };
-  const serverErrors = Object.fromEntries(
-    Object.entries(state.errors).filter(([field]) => current[field] === state.values[field])
-  );
 
   return (
     <Form
       className="flex flex-col gap-4"
-      validationErrors={serverErrors}
+      validationBehavior="aria"
       onSubmit={handleSubmit}
     >
-      {state.formError && <Notice>{state.formError}</Notice>}
+      {form.formError.value && <Notice>{form.formError.value}</Notice>}
       <TextField
-        isRequired
         autoFocus
-        maxLength={100}
-        name="name"
-        value={name}
-        onChange={handleNameChange}
+        maxLength={ACCOUNT_NAME_MAX_LENGTH}
+        {...textFieldProps(form.name)}
       >
         <Label>Account name</Label>
         <Input placeholder="Acme Inc." />
-        <FieldError />
+        <FieldError>{form.name.errorMessage}</FieldError>
       </TextField>
       <TextField
-        isRequired
         maxLength={SLUG_MAX_LENGTH}
-        name="slug"
-        validate={validateSlug}
-        value={slug}
-        onChange={handleSlugChange}
+        {...textFieldProps(form.slug)}
       >
         <Label>URL</Label>
         <InputGroup>
@@ -83,11 +56,11 @@ export function CreateAccountForm({ urlPrefix }: { urlPrefix: string }) {
           />
         </InputGroup>
         <Description>{SLUG_HINT}</Description>
-        <FieldError />
+        <FieldError>{form.slug.errorMessage}</FieldError>
       </TextField>
       <Button
         fullWidth
-        isPending={isPending}
+        isPending={form.submitting || form.redirecting.value}
         type="submit"
       >
         Create account

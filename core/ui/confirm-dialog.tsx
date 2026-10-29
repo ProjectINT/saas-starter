@@ -2,8 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { AlertDialog, Button, toast } from "@heroui/react";
-import { useTransition } from "react";
+import { AlertDialog, Button } from "@heroui/react";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -12,31 +11,13 @@ interface ConfirmDialogProps {
   children: ReactNode;
   confirmLabel: string;
   status?: "danger" | "warning" | "accent";
-  /**
-   * Runs on confirm. Return an error message to show it and keep the dialog
-   * open; return null to close it. Server Actions that redirect just navigate.
-   */
-  onConfirm: () => Promise<string | null>;
+  /** True while the confirmed action runs. The caller closes the dialog when it succeeds. */
+  isPending?: boolean;
+  onConfirm: () => void;
 }
 
 /** Controlled confirmation for destructive or irreversible actions, e.g. opened from a menu. */
-export function ConfirmDialog({ isOpen, onOpenChange, title, children, confirmLabel, status = "danger", onConfirm }: ConfirmDialogProps) {
-  const [isPending, startTransition] = useTransition();
-
-  function handleConfirm() {
-    startTransition(async () => {
-      const error = await onConfirm();
-
-      if (error) {
-        toast.danger(error);
-
-        return;
-      }
-
-      onOpenChange(false);
-    });
-  }
-
+export function ConfirmDialog({ isOpen, onOpenChange, title, children, confirmLabel, status = "danger", isPending = false, onConfirm }: ConfirmDialogProps) {
   return (
     <AlertDialog.Backdrop
       isOpen={isOpen}
@@ -59,7 +40,7 @@ export function ConfirmDialog({ isOpen, onOpenChange, title, children, confirmLa
             <Button
               isPending={isPending}
               variant={status === "danger" ? "danger" : "primary"}
-              onPress={handleConfirm}
+              onPress={onConfirm}
             >
               {confirmLabel}
             </Button>

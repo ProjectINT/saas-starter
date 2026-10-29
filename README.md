@@ -1,6 +1,6 @@
 # SaaS Starter
 
-Multi-tenant SaaS template: Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + HeroUI v3.
+Multi-tenant SaaS template: Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + HeroUI v3 + palistor (feature state and forms).
 
 Status: **phase 3**: users, accounts, roles and permissions in the database; sign-up, sign-in (password, Google), email confirmation, password reset, sign-out, onboarding; account switcher, members page, invitations, role changes, removal, leaving, ownership transfer. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -82,9 +82,9 @@ app/
   (app)/[account]/   tenant pages: layout (switcher, nav, AccountProvider), home (placeholder), members
 core/                template core
   auth/              public routes, safe redirects, session helpers, captcha, OAuth providers, auth screens
-  tenancy/           accounts, roles and permissions (`can`, `useAccount`), members and invitations: queries, Server Actions, UI
-  ui/                providers (theme, router, toasts), theme switch, logo, Next.js links styled as HeroUI
-  validation/        password and slug rules shared by forms and server code
+  tenancy/           accounts, roles and permissions (`can`, `useAccount`), members, invitations, onboarding: palistor stores (`*-store.ts`) and UI
+  ui/                providers (theme, router, toasts), theme switch, logo, Next.js links styled as HeroUI, dialogs, palistor field binding
+  validation/        password, slug, email and account name rules mirroring the database and Supabase Auth
   config/            env contract (zod), site name, route paths
   supabase/          client (browser), server (RSC/actions), proxy (session + route guard), admin (service role)
   db/                generated database types

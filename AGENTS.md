@@ -38,15 +38,31 @@ Identify the user on the server with `supabase.auth.getClaims()`, not `getSessio
 - Client components read the account, role and permissions with `useAccount()` and hide controls with `useAccount().can(...)`. That is a UI hint only: the RPC or RLS policy is the guard.
 - Permission names are the generated union `Permission` (`core/tenancy/permissions.generated.ts`, written by `npm run db:types` from `public.role_permissions`). Which role holds which permission is read at runtime, never written in TS.
 - Role order comes from `ACCOUNT_ROLES` (enum order); compare with `outranks()`, offer roles with `assignableRoles()`. Both mirror the SQL rank rule; keep them in sync with `31_members.sql` / `32_invitations.sql`.
-- Mutations go through Server Actions that call one RPC and return `null` or a message from `rpcErrorMessage(error)`; on success they call `refresh()` (or `redirect()`). Arguments of Server Actions are untrusted input.
+- Tenant data is loaded and changed in the browser through palistor stores (see below): reads under RLS, writes as one RPC each. Show RPC errors with `rpcErrorMessage(error)` (keys in `core/tenancy/rpc-errors.ts`), never `error.message`.
 
 ## UI
 
 - HeroUI v3 (`@heroui/react`): compound components (`Card.Header`, `Checkbox.Control`), no provider. Root providers are in `core/ui/providers.tsx` (next-themes, `RouterProvider`, `Toast.Provider`); toasts via `toast.success()` / `toast.danger()`.
 - Next.js links: `AppLink` / `ButtonLink` from `core/ui/links` (next/link with HeroUI classes), not HeroUI `Link` with `href`.
 - Theme colors through HeroUI tokens (`bg-background`, `bg-surface`, `text-muted`, `text-accent`, `text-danger`), so both themes work. Icons from `@gravity-ui/icons`.
-- Forms: HeroUI `Form` + `TextField`/`Label`/`Input`/`FieldError`; client rules in `core/validation` mirror the database or Supabase Auth settings and name what they mirror. Server field errors go into `Form validationErrors`.
+- Forms are palistor stores (below), except the auth screens in `core/auth`, which stay on HeroUI `Form` with `validationErrors`. Client rules in `core/validation` mirror the database or Supabase Auth settings and name what they mirror.
 - UI text is English until the i18n phase; keep strings in components, not concatenated from fragments.
+
+## State and forms (palistor)
+
+Feature state and forms use [palistor](https://www.npmjs.com/package/palistor). Examples: `core/tenancy/members-store.ts` (lists, a form, row actions) and `create-account-store.ts` (a form).
+
+- The dependency is an exact npm version (`"palistor": "0.0.32"`). Never `file:`, the PaliRent submodule or copied sources; a missing feature or a bug means a new palistor release and a new pin.
+- One store per feature, no global store. The config is built by a function and the store is created on mount: `const [store] = useState(createMembersStore)` in the feature's root client component. A module-level store would be shared by every SSR request and keep data across accounts.
+- Shared values (account id, invitation id, the router from `useRouter()`) go into `store.context` through `useStoreContext(store, { ... } satisfies XContext)`, never into hidden fields. Each store exports its `XContext`; callbacks read it with one cast (the context is untyped in palistor).
+- No `useEffect` that writes React state into a store. Reset or prefill in event handlers (the invite dialog calls `invite.reset()` when it opens).
+- Data: `defineList` resolvers query through `core/supabase/client` (RLS applies) with the account id from `store.context`, and return `[]` while it is missing: the context arrives after mount, so nothing is fetched during SSR. Show `list.error` with `LoadError` and `list.reload`.
+- Mutations: a group's `onSubmit` calls one RPC with `supabase.rpc` from the browser. On success it reloads the lists it changed (`store.proxy.members.reload()`), reports with `toast`, and navigates with `store.context.router`; it calls `router.refresh()` when server-rendered data changed (e.g. the caller's own role). Field errors go into `<field>Error` leaves; anything else is `toast.danger(rpcErrorMessage(error))` or a `formError` leaf. The page's server component only checks access.
+- Forms: HeroUI `Form validationBehavior="aria"`, fields bound with `textFieldProps(field)` (`core/ui/field-props.ts`) and `<FieldError>{field.errorMessage}</FieldError>`. A field's `validate` returns its server error first, then the client rule (`values.emailError || validateEmail(value) || undefined`); its `setter` clears that server error.
+- Row actions share one action group per feature (`type`, `targetId`, …): set it with `setValues`, then `submit()`. Confirmation dialogs are open while `type` holds an action that needs one.
+- Components: `useForm(store)` once in the root, subtrees (`form.invite`, `form.members`) go down as props, and every component that reads field state calls `useForm(prop)`. List rows are components with their own `useForm(row)`; do not read entity fields inside third-party render callbacks.
+- Empty leaf values are `""` or `false`, not `null` (palistor 0.0.32 reads `null` back as `""`).
+- Store configs have Vitest tests with `@/core/supabase/client` and `@heroui/react` mocked (`core/tenancy/*-store.test.ts`): validation, RPC errors in fields, reset.
 
 ## Database workflow
 

@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { AuthHeading } from "@/core/auth/components/auth-heading";
 import { accountPath, routes } from "@/core/config/routes";
 import { listMyAccounts, listMyInvitations } from "@/core/tenancy/accounts";
-import { InvitationResponse } from "@/core/tenancy/components/invitation-buttons";
+import { InvitationResponse } from "@/core/tenancy/components/invitation-response";
 import { LAST_ACCOUNT_COOKIE } from "@/core/tenancy/last-account";
 import { ROLE_LABELS } from "@/core/tenancy/roles";
 import { ButtonLink } from "@/core/ui/links";
