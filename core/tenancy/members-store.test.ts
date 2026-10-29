@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { englishT } from "@/core/i18n/testing";
+
 import { createMembersStore, inviteErrorFields } from "./members-store";
 
 const supabase = vi.hoisted(() => ({
@@ -33,7 +35,8 @@ const router = { push: vi.fn(), refresh: vi.fn() };
 function setup() {
   const store = createMembersStore();
 
-  store.setContext({ accountId: "acc-1", router });
+  store.setContext({ accountId: "acc-1", router, t: englishT });
+  store.setTranslator(englishT);
 
   return store;
 }
@@ -150,15 +153,15 @@ describe("invite form", () => {
 
 describe("inviteErrorFields", () => {
   it("routes errors to email, role or the whole form", () => {
-    expect(inviteErrorFields({ code: "23505", message: "already_member" }).emailError).toMatch(/already a member/);
+    expect(inviteErrorFields({ code: "23505", message: "already_member" }, englishT).emailError).toMatch(/already a member/);
     expect(
       inviteErrorFields({
         code: "23514",
         message: "new row for relation \"account_invitations\" violates check constraint \"account_invitations_email_format\"",
-      }).emailError
+      }, englishT).emailError
     ).toBe("Enter a valid email address.");
-    expect(inviteErrorFields({ code: "22023", message: "invalid_role" }).roleError).toMatch(/role/);
-    expect(inviteErrorFields({ code: "42501", message: "not_allowed" })).toEqual({
+    expect(inviteErrorFields({ code: "22023", message: "invalid_role" }, englishT).roleError).toMatch(/role/);
+    expect(inviteErrorFields({ code: "42501", message: "not_allowed" }, englishT)).toEqual({
       emailError: "",
       roleError: "",
       formError: "You don't have permission to do that.",
@@ -176,7 +179,7 @@ describe("member actions", () => {
     await action.submit();
 
     expect(supabase.rpc).toHaveBeenCalledWith("change_member_role", { p_account_id: "acc-1", p_user_id: "u2", p_role: "admin" });
-    expect(toast.success).toHaveBeenCalledWith("Bob is now admin.");
+    expect(toast.success).toHaveBeenCalledWith("Bob now has the Admin role.");
     expect(action.type.value).toBe("");
   });
 

@@ -6,12 +6,13 @@ import type { PalistorRef } from "palistor";
 
 import { Ellipsis } from "@gravity-ui/icons";
 import { Avatar, Button, Chip, Dropdown, Label, Separator, Skeleton } from "@heroui/react";
+import { useTranslations } from "next-intl";
 import { useForm } from "palistor";
 
 import { ConfirmDialog } from "@/core/ui/confirm-dialog";
 import { LoadError } from "@/core/ui/load-error";
 
-import { ROLE_LABELS, assignableRoles, isAccountRole, outranks } from "../roles";
+import { assignableRoles, isAccountRole, outranks } from "../roles";
 
 import { useAccount } from "./account-provider";
 
@@ -19,12 +20,13 @@ type Action = MembersForm["action"];
 
 /** The roster with an action menu per member. */
 export function MembersList({ members, action }: { members: MembersForm["members"]; action: Action }) {
+  const t = useTranslations("Members");
   const list = useForm(members);
 
   if (list.error) {
     return (
       <LoadError onRetry={list.reload}>
-        Could not load the members.
+        {t("loadFailed")}
       </LoadError>
     );
   }
@@ -56,10 +58,11 @@ export function MembersList({ members, action }: { members: MembersForm["members
 const ROLE_KEY_PREFIX = "role:";
 
 function MemberRow({ member, action, isReloading }: { member: PalistorRef<MemberItem>; action: Action; isReloading: boolean }) {
+  const t = useTranslations();
   const { account, role: myRole, userId: myId, can } = useAccount();
   const m = useForm(member);
   const a = useForm(action);
-  const name = m.name.value;
+  const name = m.name.value || t("Members.unknownUser");
   const role = m.role.value;
   const email = m.email.value;
 
@@ -103,7 +106,7 @@ function MemberRow({ member, action, isReloading }: { member: PalistorRef<Member
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate font-medium">
           {name}
-          {isMe && <span className="text-muted"> (you)</span>}
+          {isMe && <span className="text-muted"> {t("Members.you")}</span>}
         </span>
         {email && email !== name && <span className="truncate text-sm text-muted">{email}</span>}
       </div>
@@ -111,14 +114,14 @@ function MemberRow({ member, action, isReloading }: { member: PalistorRef<Member
         size="sm"
         variant="secondary"
       >
-        {ROLE_LABELS[role]}
+        {t(`Roles.${role}`)}
       </Chip>
       {canManage || canTransfer || canLeave
         ? (
           <Dropdown>
             <Button
               isIconOnly
-              aria-label={`Actions for ${name}`}
+              aria-label={t("Members.actionsFor", { name })}
               isDisabled={(a.submitting || isReloading) && !isActing}
               isPending={isActing}
               size="sm"
@@ -132,36 +135,36 @@ function MemberRow({ member, action, isReloading }: { member: PalistorRef<Member
                   <Dropdown.Item
                     key={item}
                     id={`${ROLE_KEY_PREFIX}${item}`}
-                    textValue={`Make ${ROLE_LABELS[item]}`}
+                    textValue={t("Members.changeRole", { role: t(`Roles.${item}`) })}
                   >
-                    <Label>Make {ROLE_LABELS[item].toLowerCase()}</Label>
+                    <Label>{t("Members.changeRole", { role: t(`Roles.${item}`) })}</Label>
                   </Dropdown.Item>
                 ))}
                 {canTransfer && (
                   <Dropdown.Item
                     id="transfer"
-                    textValue="Transfer ownership"
+                    textValue={t("Members.transfer")}
                   >
-                    <Label>Transfer ownership</Label>
+                    <Label>{t("Members.transfer")}</Label>
                   </Dropdown.Item>
                 )}
                 {(newRoles.length > 0 || canTransfer) && (canManage || canLeave) && <Separator />}
                 {canManage && (
                   <Dropdown.Item
                     id="remove"
-                    textValue="Remove from account"
+                    textValue={t("Members.remove")}
                     variant="danger"
                   >
-                    <Label>Remove from account</Label>
+                    <Label>{t("Members.remove")}</Label>
                   </Dropdown.Item>
                 )}
                 {canLeave && (
                   <Dropdown.Item
                     id="leave"
-                    textValue="Leave account"
+                    textValue={t("Members.leave")}
                     variant="danger"
                   >
-                    <Label>Leave account</Label>
+                    <Label>{t("Members.leave")}</Label>
                   </Dropdown.Item>
                 )}
               </Dropdown.Menu>
@@ -175,6 +178,7 @@ function MemberRow({ member, action, isReloading }: { member: PalistorRef<Member
 
 /** Confirmations for the actions that cannot be undone. Open while the action store holds one of them. */
 export function MemberActionDialogs({ action }: { action: Action }) {
+  const t = useTranslations("Members");
   const { account } = useAccount();
   const a = useForm(action);
   const type = a.type.value;
@@ -186,37 +190,35 @@ export function MemberActionDialogs({ action }: { action: Action }) {
   return (
     <>
       <ConfirmDialog
-        confirmLabel="Remove"
+        confirmLabel={t("removeConfirm")}
         isOpen={type === "remove"}
         isPending={a.submitting}
-        title={`Remove ${name}?`}
+        title={t("removeTitle", { name })}
         onConfirm={confirm}
         onOpenChange={handleOpenChange}
       >
-        <p>They lose access to {account.name} right away. Only a new invitation brings them back.</p>
+        <p>{t("removeBody", { account: account.name })}</p>
       </ConfirmDialog>
       <ConfirmDialog
-        confirmLabel="Transfer ownership"
+        confirmLabel={t("transfer")}
         isOpen={type === "transfer"}
         isPending={a.submitting}
         status="warning"
-        title={`Make ${name} the owner?`}
+        title={t("transferTitle", { name })}
         onConfirm={confirm}
         onOpenChange={handleOpenChange}
       >
-        <p>
-          {name} becomes the owner of {account.name} and you become an admin. Only the new owner can transfer it back.
-        </p>
+        <p>{t("transferBody", { name, account: account.name })}</p>
       </ConfirmDialog>
       <ConfirmDialog
-        confirmLabel="Leave"
+        confirmLabel={t("leaveConfirm")}
         isOpen={type === "leave"}
         isPending={a.submitting}
-        title={`Leave ${account.name}?`}
+        title={t("leaveTitle", { account: account.name })}
         onConfirm={confirm}
         onOpenChange={handleOpenChange}
       >
-        <p>You lose access to {account.name} right away. Only a new invitation brings you back.</p>
+        <p>{t("leaveBody", { account: account.name })}</p>
       </ConfirmDialog>
     </>
   );

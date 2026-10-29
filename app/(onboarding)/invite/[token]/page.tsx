@@ -1,25 +1,27 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { AuthHeading } from "@/core/auth/components/auth-heading";
 import { SignOutButton } from "@/core/auth/components/sign-out-button";
 import { withNext } from "@/core/auth/redirect";
 import { requireClaims } from "@/core/auth/session";
 import { invitePath, routes } from "@/core/config/routes";
+import { pageMetadata } from "@/core/i18n/metadata";
 import { InvitationResponse } from "@/core/tenancy/components/invitation-response";
 import { getInvitation } from "@/core/tenancy/invitations";
-import { ROLE_LABELS } from "@/core/tenancy/roles";
 import { ButtonLink } from "@/core/ui/links";
 
-export const metadata: Metadata = { title: "Invitation" };
+export const generateMetadata = pageMetadata("invitation");
 
 type Props = { params: Promise<{ token: string }> };
 
-const CLOSED: Record<string, { title: string; description: string }> = {
-  accepted: { title: "Invitation already used", description: "This invitation has been accepted." },
-  declined: { title: "Invitation declined", description: "This invitation was declined. Ask for a new one to join." },
-  revoked: { title: "Invitation withdrawn", description: "This invitation is no longer valid. Ask for a new one to join." },
-  expired: { title: "Invitation expired", description: "Invitations are valid for 7 days. Ask for a new one to join." },
-};
+const CLOSED = {
+  accepted: { title: "acceptedTitle", description: "accepted" },
+  declined: { title: "declinedTitle", description: "declinedBody" },
+  revoked: { title: "revokedTitle", description: "revoked" },
+  expired: { title: "expiredTitle", description: "expired" },
+} as const;
+
+const isClosed = (status: string): status is keyof typeof CLOSED => Object.hasOwn(CLOSED, status);
 
 /**
  * Target of the invitation link. proxy.ts sends signed-out visitors to sign-in
@@ -27,21 +29,28 @@ const CLOSED: Record<string, { title: string; description: string }> = {
  */
 export default async function InvitePage({ params }: Props) {
   const { token } = await params;
-  const [claims, invitation] = await Promise.all([requireClaims(), getInvitation(token)]);
+  const [claims, invitation, t] = await Promise.all([requireClaims(), getInvitation(token), getTranslations()]);
 
   if (!invitation) {
     return (
       <InviteMessage
-        description="The link is invalid, or the account no longer exists."
-        title="Invitation not found"
+        description={t("Invitations.notFound")}
+        goLabel={t("Invitations.goToAccounts")}
+        title={t("Invitations.notFoundTitle")}
       />
     );
   }
 
-  const closed = CLOSED[invitation.status];
+  if (isClosed(invitation.status)) {
+    const { title, description } = CLOSED[invitation.status];
 
-  if (closed) {
-    return <InviteMessage {...closed} />;
+    return (
+      <InviteMessage
+        description={t(`Invitations.${description}`)}
+        goLabel={t("Invitations.goToAccounts")}
+        title={t(`Invitations.${title}`)}
+      />
+    );
   }
 
   // Supabase stores emails in lowercase, like the invitation.
@@ -49,8 +58,8 @@ export default async function InvitePage({ params }: Props) {
     return (
       <>
         <AuthHeading
-          description={`You are signed in as ${claims.email}. Sign in with ${invitation.email} to accept.`}
-          title={`This invitation is for ${invitation.email}`}
+          description={t("Invitations.wrongEmail", { current: claims.email ?? "", email: invitation.email })}
+          title={t("Invitations.wrongEmailTitle", { email: invitation.email })}
         />
         <SignOutButton
           redirectTo={withNext(routes.signIn, invitePath(token))}
@@ -63,8 +72,11 @@ export default async function InvitePage({ params }: Props) {
   return (
     <>
       <AuthHeading
-        description={`${invitation.inviter_name ?? "A member"} invited you to join with the ${ROLE_LABELS[invitation.role]} role.`}
-        title={`Join ${invitation.account_name}`}
+        description={t("Invitations.join", {
+          inviter: invitation.inviter_name ?? t("Invitations.someone"),
+          role: t(`Roles.${invitation.role}`),
+        })}
+        title={t("Invitations.joinTitle", { account: invitation.account_name })}
       />
       <InvitationResponse
         fullWidth
@@ -74,7 +86,7 @@ export default async function InvitePage({ params }: Props) {
   );
 }
 
-function InviteMessage({ title, description }: { title: string; description: string }) {
+function InviteMessage({ title, description, goLabel }: { title: string; description: string; goLabel: string }) {
   return (
     <>
       <AuthHeading
@@ -86,7 +98,7 @@ function InviteMessage({ title, description }: { title: string; description: str
         href={routes.accounts}
         variant="secondary"
       >
-        Go to your accounts
+        {goLabel}
       </ButtonLink>
     </>
   );

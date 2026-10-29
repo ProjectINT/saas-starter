@@ -2,11 +2,11 @@
 
 Multi-tenant SaaS template: Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + HeroUI v3 + palistor (feature state and forms).
 
-Status: **phase 3**: users, accounts, roles and permissions in the database; sign-up, sign-in (password, Google), email confirmation, password reset, sign-out, onboarding; account switcher, members page, invitations, role changes, removal, leaving, ownership transfer. See [docs/ROADMAP.md](docs/ROADMAP.md).
+Status: **phase 4**: users, accounts, roles and permissions in the database; sign-up, sign-in (password, Google), email confirmation, password reset, sign-out, onboarding; account switcher, members page, invitations, role changes, removal, leaving, ownership transfer; English and Russian UI with a language switcher; error reporting with translated error pages; CI. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Quick start
 
-Requirements: Node.js ≥ 22.12, Docker.
+Requirements: Node.js ≥ 22.18 (see `.nvmrc`), Docker.
 
 ```bash
 npm ci
@@ -71,6 +71,26 @@ Test keys that always pass are listed in [.env.example](.env.example).
 | `db:lint` | plpgsql_check on `public` and `private` |
 | `db:types` | Regenerate `core/db/database.types.ts` and the permission names in `core/tenancy/permissions.generated.ts` |
 | `env:local` | Write `.env.local` for the local stack |
+| `i18n:build` | Generate `messages/*.json` from `messages/dictionary` (no network) |
+| `i18n:check` | Fail if the message files are stale or a locale is incomplete (CI) |
+| `i18n:translate` | `i18n:build` plus machine translation of missing and outdated messages (`OPENAI_API_KEY`) |
+
+## Languages
+
+UI texts live in TypeScript dictionaries (`messages/dictionary/core` for the template, `messages/dictionary/app` for the product): `{ word, tip?, context? }` in ICU syntax. `npm run i18n:build` writes `messages/en.json` and prunes the other locales; `npm run i18n:translate` translates what is missing or outdated with the OpenAI API and leaves a key missing if the answer is wrong, instead of filling it with English. `messages/translations.lock.json` remembers which English text each translation was made from, so editing a `word` re-translates it.
+
+Supported languages are listed in [core/i18n/config.ts](core/i18n/config.ts) (`en`, `ru`). The UI language is the `NEXT_LOCALE` cookie, else the browser's Accept-Language; a signed-in user's choice is also saved in `profiles.locale` and restored at sign-in on other devices. To add a language: add it to `LOCALES` and `LOCALE_NAMES`, run `npm run i18n:translate`, review the result.
+
+## Error reporting
+
+Server errors (rendering, Route Handlers, Server Actions, proxy) are reported from [instrumentation.ts](instrumentation.ts), browser errors from [instrumentation-client.ts](instrumentation-client.ts) and the error page. Events go to the console by default; to send them to Rollbar, Hawk or your own endpoint, return an [untracker](https://www.npmjs.com/package/untracker) transport from [core/config/monitoring.ts](core/config/monitoring.ts). Secret-looking fields and JWTs are scrubbed before any transport sees an event. `NEXT_PUBLIC_APP_RELEASE` (the commit SHA on Vercel) tags each event with a version.
+
+## CI
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on pushes to `main` and on pull requests:
+
+- **app**: lint, typecheck, `i18n:check`, unit tests, `next build` (with placeholder env values);
+- **db**: starts local Supabase, `db:lint` (errors), pgTAP, checks that `supabase/schemas` produce no new migration, and that `db:types` output is committed.
 
 ## Layout
 
@@ -82,12 +102,19 @@ app/
   (app)/[account]/   tenant pages: layout (switcher, nav, AccountProvider), home (placeholder), members
 core/                template core
   auth/              public routes, safe redirects, session helpers, captcha, OAuth providers, auth screens
+  i18n/              locales, request config for next-intl, locale cookie and profile sync, language switcher, page titles
+  errors/            error reporting (captureException), secret scrubbing
   tenancy/           accounts, roles and permissions (`can`, `useAccount`), members, invitations, onboarding: palistor stores (`*-store.ts`) and UI
   ui/                providers (theme, router, toasts), theme switch, logo, Next.js links styled as HeroUI, dialogs, palistor field binding
   validation/        password, slug, email and account name rules mirroring the database and Supabase Auth
-  config/            env contract (zod), site name, route paths
+  config/            env contract (zod), site name, route paths, monitoring transport
   supabase/          client (browser), server (RSC/actions), proxy (session + route guard), admin (service role)
   db/                generated database types
+messages/
+  dictionary/        source texts: core/ (template), app/ (product)
+  *.json             generated per locale, plus translations.lock.json
+scripts/i18n.ts      dictionary build, check and machine translation
+instrumentation*.ts  error reporting on the server and in the browser
 proxy.ts             refreshes the Supabase session and guards routes on every request
 supabase/
   schemas/00-49      core schema (declarative source of truth)
@@ -101,7 +128,7 @@ supabase/
 
 | Table | Purpose |
 |---|---|
-| `profiles` | One row per auth user, created by a trigger. Email synced from `auth.users`. |
+| `profiles` | One row per auth user, created by a trigger. Email synced from `auth.users`; `locale` from sign-up, the language switcher and sign-in. |
 | `accounts` | Tenants. `slug` is the URL identifier (reserved route names are rejected). |
 | `account_members` | User ↔ account with a role (`owner`, `admin`, `member`). Read-only for clients. |
 | `account_invitations` | Invitations by email with a role; stores only the hash of the link token. Written by RPCs only. |

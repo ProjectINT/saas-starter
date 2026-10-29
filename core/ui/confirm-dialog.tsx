@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { AlertDialog, Button } from "@heroui/react";
+import { useTranslations } from "next-intl";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ interface ConfirmDialogProps {
 
 /** Controlled confirmation for destructive or irreversible actions, e.g. opened from a menu. */
 export function ConfirmDialog({ isOpen, onOpenChange, title, children, confirmLabel, status = "danger", isPending = false, onConfirm }: ConfirmDialogProps) {
+  const t = useTranslations("Common");
+
   return (
     <AlertDialog.Backdrop
       isOpen={isOpen}
@@ -35,7 +38,7 @@ export function ConfirmDialog({ isOpen, onOpenChange, title, children, confirmLa
               slot="close"
               variant="tertiary"
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               isPending={isPending}

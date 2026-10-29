@@ -1,20 +1,21 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { AuthHeading } from "@/core/auth/components/auth-heading";
 import { ResetPasswordForm } from "@/core/auth/components/reset-password-form";
 import { requireClaims } from "@/core/auth/session";
+import { pageMetadata } from "@/core/i18n/metadata";
 
-export const metadata: Metadata = { title: "Set a new password" };
+export const generateMetadata = pageMetadata("resetPassword");
 
 // Not public: the recovery link (/auth/confirm) signs the user in first.
 export default async function ResetPasswordPage() {
-  const claims = await requireClaims();
+  const [claims, t] = await Promise.all([requireClaims(), getTranslations("Auth.resetPassword")]);
 
   return (
     <>
       <AuthHeading
-        description={claims.email ? `For ${claims.email}.` : undefined}
-        title="Set a new password"
+        description={claims.email ? t("description", { email: claims.email }) : undefined}
+        title={t("title")}
       />
       <ResetPasswordForm />
     </>

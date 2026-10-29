@@ -4,24 +4,22 @@ import type { InvitationItem, MembersForm } from "../members-store";
 import type { PalistorRef } from "palistor";
 
 import { Button, Chip } from "@heroui/react";
+import { useFormatter, useTranslations } from "next-intl";
 import { useForm } from "palistor";
 
 import { LoadError } from "@/core/ui/load-error";
 
-import { ROLE_LABELS } from "../roles";
-
 type Action = MembersForm["action"];
-
-const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
 /** Invitations of the account that are still open, for members with members.invite. Hidden while there are none. */
 export function OpenInvitations({ invitations, action }: { invitations: MembersForm["invitations"]; action: Action }) {
+  const t = useTranslations("Members.pending");
   const list = useForm(invitations);
 
   if (list.error) {
     return (
       <LoadError onRetry={list.reload}>
-        Could not load the pending invitations.
+        {t("loadFailed")}
       </LoadError>
     );
   }
@@ -32,7 +30,7 @@ export function OpenInvitations({ invitations, action }: { invitations: MembersF
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-semibold">Pending invitations</h2>
+      <h2 className="font-semibold">{t("title")}</h2>
       <ul className="flex flex-col divide-y divide-separator rounded-2xl bg-surface shadow-surface">
         {list.map((invitation, _index, id) => (
           <InvitationRow
@@ -47,6 +45,8 @@ export function OpenInvitations({ invitations, action }: { invitations: MembersF
 }
 
 function InvitationRow({ invitation, action }: { invitation: PalistorRef<InvitationItem>; action: Action }) {
+  const t = useTranslations();
+  const format = useFormatter();
   const item = useForm(invitation);
   const a = useForm(action);
   const email = item.email.value;
@@ -63,7 +63,7 @@ function InvitationRow({ invitation, action }: { invitation: PalistorRef<Invitat
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate font-medium">{email}</span>
         <span className="text-sm text-muted">
-          {isExpired ? "Expired" : "Expires"} {dateFormat.format(new Date(item.expiresAt.value))}
+          {t(isExpired ? "Members.pending.expired" : "Members.pending.expires", { date: format.dateTime(new Date(item.expiresAt.value), { dateStyle: "medium" }) })}
         </span>
       </div>
       <Chip
@@ -71,7 +71,7 @@ function InvitationRow({ invitation, action }: { invitation: PalistorRef<Invitat
         size="sm"
         variant="secondary"
       >
-        {ROLE_LABELS[item.role.value]}
+        {t(`Roles.${item.role.value}`)}
       </Chip>
       <Button
         isDisabled={a.submitting && !isRevoking}
@@ -80,7 +80,7 @@ function InvitationRow({ invitation, action }: { invitation: PalistorRef<Invitat
         variant="ghost"
         onPress={revoke}
       >
-        Revoke
+        {t("Members.pending.revoke")}
       </Button>
     </li>
   );

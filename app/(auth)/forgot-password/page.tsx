@@ -1,8 +1,7 @@
-import type { Metadata } from "next";
-
 import { ForgotPasswordView } from "@/core/auth/components/forgot-password-view";
+import { pageMetadata } from "@/core/i18n/metadata";
 
-export const metadata: Metadata = { title: "Reset password" };
+export const generateMetadata = pageMetadata("forgotPassword");
 
 export default function ForgotPasswordPage() {
   return <ForgotPasswordView />;

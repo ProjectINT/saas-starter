@@ -3,6 +3,7 @@ import type { useRouter } from "next/navigation";
 import { toast } from "@heroui/react";
 import { Palistor } from "palistor";
 
+import type { Translate } from "@/core/i18n/translate";
 import { accountPath, routes } from "@/core/config/routes";
 import { createClient } from "@/core/supabase/client";
 
@@ -15,6 +16,8 @@ import { rpcErrorMessage } from "./rpc-errors";
 export interface InvitationResponseContext {
   invitationId: string;
   router: ReturnType<typeof useRouter>;
+  /** Root translator from useTranslations(), for toasts and RPC errors. */
+  t: Translate;
 }
 
 export type InvitationChoice = "" | "accept" | "decline";
@@ -25,7 +28,8 @@ interface ResponseValues {
 
 /** The part of the store respond() uses (palistor hands the store to onSubmit untyped). */
 interface ResponseStoreApi {
-  readonly context: Record<string, unknown>;
+  /** Set by InvitationResponse on mount. */
+  readonly context: InvitationResponseContext;
   setValues(patch: { response: Partial<ResponseValues> }): void;
 }
 
@@ -35,34 +39,34 @@ interface ResponseStoreApi {
  * clears it for another try.
  */
 async function respond({ choice }: ResponseValues, store: ResponseStoreApi) {
-  const { invitationId = "", router } = store.context as Partial<InvitationResponseContext>;
+  const { invitationId, router, t } = store.context;
   const supabase = createClient();
 
   if (choice === "accept") {
     const { data, error } = await supabase.rpc("accept_invitation", { p_invitation_id: invitationId });
 
     if (error) {
-      toast.danger(rpcErrorMessage(error));
+      toast.danger(rpcErrorMessage(error, t));
       store.setValues({ response: { choice: "" } });
 
       return;
     }
 
-    toast.success(`You joined ${data.name}.`);
-    router?.push(accountPath(data.slug));
+    toast.success(t("Invitations.joined", { account: data.name }));
+    router.push(accountPath(data.slug));
   } else if (choice === "decline") {
     const { error } = await supabase.rpc("decline_invitation", { p_invitation_id: invitationId });
 
     if (error) {
-      toast.danger(rpcErrorMessage(error));
+      toast.danger(rpcErrorMessage(error, t));
       store.setValues({ response: { choice: "" } });
 
       return;
     }
 
-    toast.success("Invitation declined.");
+    toast.success(t("Invitations.declined"));
     // The account list shows what is left to choose, or moves on.
-    router?.push(routes.accounts);
+    router.push(routes.accounts);
   }
 }
 

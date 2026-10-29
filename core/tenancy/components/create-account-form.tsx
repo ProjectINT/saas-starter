@@ -2,22 +2,25 @@
 
 import { Button, Description, FieldError, Form, Input, InputGroup, Label, TextField } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useForm, useStoreContext } from "palistor";
+import { useTranslations } from "next-intl";
+import { useForm, useStoreContext, useTranslator } from "palistor";
 import { useState, type FormEvent } from "react";
 
 import { textFieldProps } from "@/core/ui/field-props";
 import { Notice } from "@/core/ui/notice";
 import { ACCOUNT_NAME_MAX_LENGTH } from "@/core/validation/account-name";
-import { SLUG_HINT, SLUG_MAX_LENGTH } from "@/core/validation/slug";
+import { SLUG_MAX_LENGTH, slugHint } from "@/core/validation/slug";
 
 import { createAccountStore, type CreateAccountContext } from "../create-account-store";
 
 /** Account name + URL slug. The slug follows the name until edited by hand. */
 export function CreateAccountForm({ urlPrefix }: { urlPrefix: string }) {
+  const t = useTranslations();
   const router = useRouter();
   const [store] = useState(createAccountStore);
 
-  useStoreContext(store, { router } satisfies CreateAccountContext);
+  useStoreContext(store, { router, t } satisfies CreateAccountContext);
+  useTranslator(store, t);
 
   const { account: form } = useForm(store);
 
@@ -38,24 +41,24 @@ export function CreateAccountForm({ urlPrefix }: { urlPrefix: string }) {
         maxLength={ACCOUNT_NAME_MAX_LENGTH}
         {...textFieldProps(form.name)}
       >
-        <Label>Account name</Label>
-        <Input placeholder="Acme Inc." />
+        <Label>{t("Accounts.create.name")}</Label>
+        <Input placeholder={t("Accounts.create.namePlaceholder")} />
         <FieldError>{form.name.errorMessage}</FieldError>
       </TextField>
       <TextField
         maxLength={SLUG_MAX_LENGTH}
         {...textFieldProps(form.slug)}
       >
-        <Label>URL</Label>
+        <Label>{t("Accounts.create.url")}</Label>
         <InputGroup>
           <InputGroup.Prefix>{urlPrefix}</InputGroup.Prefix>
           <InputGroup.Input
             autoCapitalize="none"
-            placeholder="acme"
+            placeholder={t("Accounts.create.urlPlaceholder")}
             spellCheck={false}
           />
         </InputGroup>
-        <Description>{SLUG_HINT}</Description>
+        <Description>{slugHint(t)}</Description>
         <FieldError>{form.slug.errorMessage}</FieldError>
       </TextField>
       <Button
@@ -63,7 +66,7 @@ export function CreateAccountForm({ urlPrefix }: { urlPrefix: string }) {
         isPending={form.submitting || form.redirecting.value}
         type="submit"
       >
-        Create account
+        {t("Accounts.create.submit")}
       </Button>
     </Form>
   );

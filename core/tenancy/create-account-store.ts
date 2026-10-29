@@ -1,11 +1,14 @@
 import type { useRouter } from "next/navigation";
+import type { TranslateFn } from "palistor";
 
 import { Palistor } from "palistor";
 
+import type { Translate } from "@/core/i18n/translate";
 import { accountPath } from "@/core/config/routes";
+import { captureException } from "@/core/errors";
 import { createClient } from "@/core/supabase/client";
-import { validateAccountName } from "@/core/validation/account-name";
-import { SLUG_HINT, slugify, validateSlug } from "@/core/validation/slug";
+import { ACCOUNT_NAME_MAX_LENGTH, validateAccountName } from "@/core/validation/account-name";
+import { slugHint, slugify, validateSlug } from "@/core/validation/slug";
 
 // The onboarding form: account name + URL slug. create_account makes the
 // signed-in user the owner and runs the app hook private.app_on_account_created.
@@ -13,6 +16,8 @@ import { SLUG_HINT, slugify, validateSlug } from "@/core/validation/slug";
 /** What CreateAccountForm puts into store.context. */
 export interface CreateAccountContext {
   router: ReturnType<typeof useRouter>;
+  /** Root translator from useTranslations(), for the RPC errors. */
+  t: Translate;
 }
 
 interface AccountValues {
@@ -30,16 +35,17 @@ interface AccountValues {
 
 /** The part of the store createAccount() uses (palistor hands the store to onSubmit untyped). */
 interface CreateAccountStoreApi {
-  readonly context: Record<string, unknown>;
+  /** Set by CreateAccountForm on mount. */
+  readonly context: CreateAccountContext;
   setValues(patch: { account: Partial<AccountValues> }): void;
 }
 
 // Constraint names from supabase/schemas/21_accounts.sql.
-const CONSTRAINT_ERRORS: Record<string, { field: "nameError" | "slugError"; message: string }> = {
-  accounts_slug_key: { field: "slugError", message: "This URL is already taken." },
-  accounts_slug_not_reserved: { field: "slugError", message: "This URL is reserved. Choose another one." },
-  accounts_slug_format: { field: "slugError", message: SLUG_HINT },
-  accounts_name_check: { field: "nameError", message: "Enter a name of up to 100 characters." },
+const CONSTRAINT_ERRORS: Record<string, { field: "nameError" | "slugError"; message: (t: Translate) => string }> = {
+  accounts_slug_key: { field: "slugError", message: (t) => t("Accounts.create.slugTaken") },
+  accounts_slug_not_reserved: { field: "slugError", message: (t) => t("Accounts.create.slugReserved") },
+  accounts_slug_format: { field: "slugError", message: slugHint },
+  accounts_name_check: { field: "nameError", message: (t) => t("Accounts.create.nameInvalid", { max: ACCOUNT_NAME_MAX_LENGTH }) },
 };
 
 /**
@@ -47,7 +53,7 @@ const CONSTRAINT_ERRORS: Record<string, { field: "nameError" | "slugError"; mess
  * check_violation 23514, constraint name in the message) to the field it
  * concerns, or to the whole form.
  */
-export function createAccountErrorFields(error: { code?: string; message: string }) {
+export function createAccountErrorFields(error: { code?: string; message: string }, t: Translate) {
   const errors = { nameError: "", slugError: "", formError: "" };
 
   if (error.code === "23505" || error.code === "23514") {
@@ -56,25 +62,27 @@ export function createAccountErrorFields(error: { code?: string; message: string
     if (constraint) {
       const { field, message } = CONSTRAINT_ERRORS[constraint];
 
-      return { ...errors, [field]: message };
+      return { ...errors, [field]: message(t) };
     }
   }
 
-  return { ...errors, formError: "Could not create the account. Try again." };
+  captureException(error, { source: "create_account" });
+
+  return { ...errors, formError: t("Accounts.create.failed") };
 }
 
 async function createAccount(values: AccountValues, store: CreateAccountStoreApi) {
-  const { router } = store.context as Partial<CreateAccountContext>;
+  const { router, t } = store.context;
   const { data, error } = await createClient().rpc("create_account", { p_name: values.name, p_slug: values.slug });
 
   if (error) {
-    store.setValues({ account: createAccountErrorFields(error) });
+    store.setValues({ account: createAccountErrorFields(error, t) });
 
     return;
   }
 
   store.setValues({ account: { formError: "", redirecting: true } });
-  router?.push(accountPath(data.slug));
+  router.push(accountPath(data.slug));
 }
 
 const createAccountConfig = () => ({
@@ -82,7 +90,7 @@ const createAccountConfig = () => ({
     name: {
       value: "",
       isRequired: true,
-      validate: (value: string, values: AccountValues) => values.nameError || validateAccountName(value) || undefined,
+      validate: (value: string, values: AccountValues, t: TranslateFn) => values.nameError || validateAccountName(value, t) || undefined,
       // The slug follows the name until it is edited by hand.
       setter: (value: string, values: AccountValues) => (
         values.slugEdited ? { nameError: "" } : { nameError: "", slug: slugify(value), slugError: "" }
@@ -92,7 +100,7 @@ const createAccountConfig = () => ({
       value: "",
       isRequired: true,
       formatter: (value: string | boolean) => String(value).toLowerCase(),
-      validate: (value: string, values: AccountValues) => values.slugError || validateSlug(value) || undefined,
+      validate: (value: string, values: AccountValues, t: TranslateFn) => values.slugError || validateSlug(value, t) || undefined,
       setter: (value: string) => ({ slugError: "", slugEdited: value !== "" }),
     },
     slugEdited: { value: false },

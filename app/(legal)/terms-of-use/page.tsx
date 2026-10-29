@@ -1,21 +1,25 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { siteConfig } from "@/core/config/site";
+import { pageMetadata } from "@/core/i18n/metadata";
 
-export const metadata: Metadata = { title: "Terms of Use" };
+export const generateMetadata = pageMetadata("termsOfUse");
 
-// Placeholder. Replace with terms reviewed by a lawyer before launch.
-export default function TermsOfUsePage() {
+// Placeholder texts (Legal.terms in the dictionary). Replace them with terms
+// reviewed by a lawyer before launch.
+export default async function TermsOfUsePage() {
+  const t = await getTranslations("Legal.terms");
+
   return (
     <>
-      <h1>Terms of Use</h1>
-      <p className="text-muted">Placeholder text. Replace it with the terms of your product.</p>
-      <h2>1. Service</h2>
-      <p>{siteConfig.name} provides a hosted service. These terms govern your use of it.</p>
-      <h2>2. Accounts</h2>
-      <p>You are responsible for your account, its members and the activity in it.</p>
-      <h2>3. Contact</h2>
-      <p>Questions about these terms: add your contact address here.</p>
+      <h1>{t("title")}</h1>
+      <p className="text-muted">{t("placeholder")}</p>
+      <h2>{t("serviceTitle")}</h2>
+      <p>{t("service", { site: siteConfig.name })}</p>
+      <h2>{t("accountsTitle")}</h2>
+      <p>{t("accounts")}</p>
+      <h2>{t("contactTitle")}</h2>
+      <p>{t("contact")}</p>
     </>
   );
 }

@@ -1,46 +1,36 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { AuthHeading } from "@/core/auth/components/auth-heading";
 import { routes } from "@/core/config/routes";
+import { pageMetadata } from "@/core/i18n/metadata";
 import { ButtonLink } from "@/core/ui/links";
 
-export const metadata: Metadata = { title: "Sign-in problem" };
+export const generateMetadata = pageMetadata("authError");
 
 // Only known reasons are shown; text from the query string is never echoed.
-const REASONS = {
-  link: {
-    title: "This link has expired",
-    description: "Email links work once and expire after an hour. Request a new one and use the latest email.",
-  },
-  callback: {
-    title: "Sign-in was not completed",
-    description: "The sign-in was cancelled or the link was opened in a different browser. Try again from this browser.",
-  },
-};
-
 export default async function AuthErrorPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
-  const { reason } = await searchParams;
-  const { title, description } = reason === "link" ? REASONS.link : REASONS.callback;
+  const [{ reason }, t] = await Promise.all([searchParams, getTranslations()]);
+  const kind = reason === "link" ? "linkError" : "callbackError";
 
   return (
     <>
       <AuthHeading
-        description={description}
-        title={title}
+        description={t(`Auth.${kind}.description`)}
+        title={t(`Auth.${kind}.title`)}
       />
       <div className="flex flex-col gap-2">
         <ButtonLink
           fullWidth
           href={routes.signIn}
         >
-          Back to sign in
+          {t("Common.backToSignIn")}
         </ButtonLink>
         <ButtonLink
           fullWidth
           href={routes.forgotPassword}
           variant="ghost"
         >
-          Reset password
+          {t("Auth.resetPasswordLink")}
         </ButtonLink>
       </div>
     </>

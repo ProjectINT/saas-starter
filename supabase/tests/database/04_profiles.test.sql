@@ -2,7 +2,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(8);
+SELECT plan(9);
 
 INSERT INTO auth.users (id, email) VALUES
   ('40000000-0000-4000-8000-00000000000a', 'p-alice@test.local'),
@@ -51,6 +51,11 @@ SELECT throws_ok(
 SELECT throws_ok(
   $$ UPDATE public.profiles SET locale = 'not a locale' WHERE id = '40000000-0000-4000-8000-00000000000a' $$,
   '23514', NULL, 'locale must look like a BCP 47 tag'
+);
+
+SELECT throws_ok(
+  $$ UPDATE public.profiles SET locale = 'en' || repeat('-abcdefgh', 4) WHERE id = '40000000-0000-4000-8000-00000000000a' $$,
+  '23514', NULL, 'locale is at most 35 characters'
 );
 
 SELECT isnt_empty(

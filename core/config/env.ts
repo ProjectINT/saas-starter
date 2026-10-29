@@ -15,6 +15,8 @@ const publicEnvShape = {
   // verifies the token, so it must be enabled there too ([auth.captcha]).
   NEXT_PUBLIC_CAPTCHA_PROVIDER: z.enum(["turnstile", "hcaptcha"]).optional(),
   NEXT_PUBLIC_CAPTCHA_SITE_KEY: z.string().min(1).optional(),
+  // Version attached to error reports; on Vercel the commit SHA by default.
+  NEXT_PUBLIC_APP_RELEASE: z.string().min(1).optional(),
 };
 
 type CaptchaEnv = {

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { LogoGithub } from "@gravity-ui/icons";
 import { Button, Separator, toast } from "@heroui/react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import type { OAuthProvider } from "@/core/auth/oauth";
@@ -56,6 +57,7 @@ interface SocialButtonsProps {
  * /accounts, so nothing waits for database triggers.
  */
 export function SocialButtons({ providers, next }: SocialButtonsProps) {
+  const t = useTranslations();
   const [pending, setPending] = useState<OAuthProvider | null>(null);
 
   if (providers.length === 0) {
@@ -76,7 +78,7 @@ export function SocialButtons({ providers, next }: SocialButtonsProps) {
 
     // On success the browser is already leaving the page.
     if (error) {
-      toast.danger(authErrorMessage(error));
+      toast.danger(authErrorMessage(error, t));
       setPending(null);
     }
   }
@@ -94,13 +96,13 @@ export function SocialButtons({ providers, next }: SocialButtonsProps) {
             onPress={() => signInWith(provider)}
           >
             {PROVIDERS[provider].icon}
-            Continue with {PROVIDERS[provider].label}
+            {t("Auth.continueWith", { provider: PROVIDERS[provider].label })}
           </Button>
         ))}
       </div>
       <div className="flex items-center gap-3">
         <Separator className="flex-1" />
-        <span className="text-xs text-muted">or</span>
+        <span className="text-xs text-muted">{t("Auth.or")}</span>
         <Separator className="flex-1" />
       </div>
     </div>

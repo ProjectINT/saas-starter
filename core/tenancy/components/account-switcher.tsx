@@ -4,15 +4,15 @@ import type { Membership } from "../accounts";
 
 import { Check, ChevronsExpandVertical, Plus } from "@gravity-ui/icons";
 import { Button, Dropdown, Label, Separator } from "@heroui/react";
+import { useTranslations } from "next-intl";
 
 import { accountPath, routes } from "@/core/config/routes";
-
-import { ROLE_LABELS } from "../roles";
 
 import { useAccount } from "./account-provider";
 
 /** Current account name; opens the list of the user's accounts and "Create account". */
 export function AccountSwitcher({ memberships }: { memberships: Membership[] }) {
+  const t = useTranslations();
   const { account } = useAccount();
 
   return (
@@ -29,7 +29,7 @@ export function AccountSwitcher({ memberships }: { memberships: Membership[] }) 
         className="min-w-60"
         placement="bottom start"
       >
-        <Dropdown.Menu aria-label="Switch account">
+        <Dropdown.Menu aria-label={t("Accounts.switcher.label")}>
           {memberships.map(({ account: item, role }) => (
             <Dropdown.Item
               key={item.id}
@@ -39,7 +39,7 @@ export function AccountSwitcher({ memberships }: { memberships: Membership[] }) 
             >
               <span className="flex min-w-0 flex-1 flex-col">
                 <Label className="truncate">{item.name}</Label>
-                <span className="text-xs text-muted">{ROLE_LABELS[role]}</span>
+                <span className="text-xs text-muted">{t(`Roles.${role}`)}</span>
               </span>
               {item.id === account.id && <Check className="size-4 shrink-0 text-accent" />}
             </Dropdown.Item>
@@ -48,10 +48,10 @@ export function AccountSwitcher({ memberships }: { memberships: Membership[] }) 
           <Dropdown.Item
             href={routes.onboarding}
             id="create"
-            textValue="Create account"
+            textValue={t("Accounts.switcher.create")}
           >
             <Plus className="size-4" />
-            <Label>Create account</Label>
+            <Label>{t("Accounts.switcher.create")}</Label>
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>

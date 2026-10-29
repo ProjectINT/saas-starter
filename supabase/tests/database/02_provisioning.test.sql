@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(8);
+SELECT plan(10);
 
 -- An existing account the attacker wants to join.
 INSERT INTO auth.users (id, email) VALUES ('10000000-0000-4000-8000-000000000001', 'victim@test.local');
@@ -23,7 +23,8 @@ VALUES (
     'role', 'owner',
     'account_role', 'admin',
     'account_id', '20000000-0000-4000-8000-000000000001',
-    'is_admin', true
+    'is_admin', true,
+    'locale', 'ru'
   )
 );
 
@@ -55,8 +56,20 @@ SELECT is_empty(
   'forged admin flag in user metadata grants no platform admin'
 );
 
+SELECT is(
+  (SELECT locale FROM public.profiles WHERE id = '10000000-0000-4000-8000-000000000002'),
+  'ru',
+  'the sign-up language from metadata becomes the profile locale'
+);
+
 INSERT INTO auth.users (id, email, raw_user_meta_data)
-VALUES ('10000000-0000-4000-8000-000000000003', 'blank@test.local', '{"first_name": "   "}');
+VALUES ('10000000-0000-4000-8000-000000000003', 'blank@test.local', '{"first_name": "   ", "locale": "<script>"}');
+
+SELECT is(
+  (SELECT locale FROM public.profiles WHERE id = '10000000-0000-4000-8000-000000000003'),
+  NULL,
+  'a malformed locale in metadata is dropped instead of failing the sign-up'
+);
 
 SELECT is(
   (SELECT first_name FROM public.profiles WHERE id = '10000000-0000-4000-8000-000000000003'),

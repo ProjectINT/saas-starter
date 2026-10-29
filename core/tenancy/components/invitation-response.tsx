@@ -2,6 +2,7 @@
 
 import { Button } from "@heroui/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useForm, useStoreContext } from "palistor";
 import { useState } from "react";
 
@@ -9,10 +10,11 @@ import { createInvitationResponseStore, type InvitationResponseContext } from ".
 
 /** Accept / Decline for the invitee. Both navigate on success. */
 export function InvitationResponse({ invitationId, fullWidth }: { invitationId: string; fullWidth?: boolean }) {
+  const t = useTranslations();
   const router = useRouter();
   const [store] = useState(createInvitationResponseStore);
 
-  useStoreContext(store, { invitationId, router } satisfies InvitationResponseContext);
+  useStoreContext(store, { invitationId, router, t } satisfies InvitationResponseContext);
 
   const { response } = useForm(store);
   const choice = response.choice.value;
@@ -31,7 +33,7 @@ export function InvitationResponse({ invitationId, fullWidth }: { invitationId: 
         size={fullWidth ? "md" : "sm"}
         onPress={() => respond("accept")}
       >
-        Accept
+        {t("Invitations.accept")}
       </Button>
       <Button
         fullWidth={fullWidth}
@@ -41,7 +43,7 @@ export function InvitationResponse({ invitationId, fullWidth }: { invitationId: 
         variant="tertiary"
         onPress={() => respond("decline")}
       >
-        Decline
+        {t("Invitations.decline")}
       </Button>
     </div>
   );

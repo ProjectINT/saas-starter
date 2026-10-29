@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   first_name  text CHECK (char_length(first_name) <= 100),
   last_name   text CHECK (char_length(last_name) <= 100),
   avatar_path text CHECK (char_length(avatar_path) <= 1024),
-  locale      text CHECK (locale ~ '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$'),
+  locale      text CHECK (char_length(locale) <= 35 AND locale ~ '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$'),
   timezone    text CHECK (char_length(timezone) <= 64),
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 COMMENT ON TABLE public.profiles IS 'Public profile of an auth user. Visible to the user and to members of shared accounts with members.view.';
 COMMENT ON COLUMN public.profiles.email IS 'Copy of auth.users.email, kept in sync by a trigger. Read-only for clients.';
 COMMENT ON COLUMN public.profiles.avatar_path IS 'Storage object path, not a URL.';
-COMMENT ON COLUMN public.profiles.locale IS 'Preferred UI/email language (BCP 47), e.g. en, ru, pt-BR.';
+COMMENT ON COLUMN public.profiles.locale IS 'Preferred UI/email language (BCP 47), e.g. en, ru, pt-BR. Set from sign-up metadata, at sign-in and by the language switcher; which tags the app supports is decided in core/i18n/config.ts.';
 COMMENT ON COLUMN public.profiles.timezone IS 'IANA time zone, e.g. Europe/Berlin.';
 
 CREATE TRIGGER set_updated_at
@@ -56,12 +56,18 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, first_name, last_name)
+  INSERT INTO public.profiles (id, email, first_name, last_name, locale)
   VALUES (
     NEW.id,
     NEW.email,
     left(nullif(btrim(NEW.raw_user_meta_data ->> 'first_name'), ''), 100),
-    left(nullif(btrim(NEW.raw_user_meta_data ->> 'last_name'), ''), 100)
+    left(nullif(btrim(NEW.raw_user_meta_data ->> 'last_name'), ''), 100),
+    -- The UI language at sign-up; anything the column would reject is dropped.
+    CASE
+      WHEN char_length(NEW.raw_user_meta_data ->> 'locale') <= 35
+        AND NEW.raw_user_meta_data ->> 'locale' ~ '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
+      THEN NEW.raw_user_meta_data ->> 'locale'
+    END
   );
 
   RETURN NEW;

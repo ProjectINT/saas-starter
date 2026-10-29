@@ -1,15 +1,17 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { useRouter } from "next/navigation";
-import type { ConfigProxy } from "palistor";
+import type { ConfigProxy, TranslateFn } from "palistor";
 
 import { toast } from "@heroui/react";
 import { Palistor, defineList } from "palistor";
 
+import type { Translate } from "@/core/i18n/translate";
 import { invitePath, routes } from "@/core/config/routes";
+import { captureException } from "@/core/errors";
 import { createClient } from "@/core/supabase/client";
 import { normalizeEmail, validateEmail } from "@/core/validation/email";
 
-import { ACCOUNT_ROLES, ROLE_LABELS, byRoleThenName, type AccountRole } from "./roles";
+import { ACCOUNT_ROLES, byRoleThenName, type AccountRole } from "./roles";
 import { rpcErrorKey, rpcErrorMessage } from "./rpc-errors";
 
 // State of the members page: the roster, open invitations, the invite form and
@@ -20,13 +22,15 @@ import { rpcErrorKey, rpcErrorMessage } from "./rpc-errors";
 export interface MembersContext {
   accountId: string;
   router: ReturnType<typeof useRouter>;
+  /** Root translator from useTranslations(), for toasts and RPC errors. */
+  t: Translate;
 }
 
 export interface MemberItem {
   /** The member's user id. */
   id: string;
   role: AccountRole;
-  /** First and last name, or the email (same rule as private.display_name). */
+  /** First and last name, or the email (same rule as private.display_name); empty if neither is known. */
   name: string;
   email: string;
 }
@@ -65,13 +69,15 @@ interface ActionValues {
 
 /** The part of the store the actions use (palistor hands the store to onSubmit untyped). */
 interface MembersStoreApi {
-  readonly context: Record<string, unknown>;
+  /** Set by MembersView on mount, so complete whenever a form is submitted. */
+  readonly context: MembersContext;
   readonly proxy: { members: { reload(): void }; invitations: { reload(): void } };
   setValues(patch: { invite?: Partial<InviteValues>; action?: Partial<ActionValues> }): void;
 }
 
 const LEAST_ROLE = ACCOUNT_ROLES[ACCOUNT_ROLES.length - 1];
 
+// Empty when a list resolver first runs: MembersView sets it after mount.
 const membersContext = (store: { context: Record<string, unknown> }) => store.context as Partial<MembersContext>;
 
 /** The account roster, owner first. RLS returns it only with members.view. */
@@ -87,6 +93,8 @@ async function fetchMembers(accountId: string | undefined): Promise<MemberItem[]
     .eq("account_id", accountId);
 
   if (error) {
+    // palistor keeps it in list.error, where the page offers a retry.
+    captureException(error, { source: "members" });
     throw error;
   }
 
@@ -94,7 +102,7 @@ async function fetchMembers(accountId: string | undefined): Promise<MemberItem[]
     .map(({ user_id, role, profile }) => ({
       id: user_id,
       role,
-      name: [profile.first_name, profile.last_name].filter(Boolean).join(" ") || profile.email || "Unknown user",
+      name: [profile.first_name, profile.last_name].filter(Boolean).join(" ") || profile.email || "",
       email: profile.email ?? "",
     }))
     .toSorted(byRoleThenName);
@@ -116,6 +124,7 @@ async function fetchOpenInvitations(accountId: string | undefined): Promise<Invi
     .order("created_at", { ascending: false });
 
   if (error) {
+    captureException(error, { source: "invitations" });
     throw error;
   }
 
@@ -137,15 +146,15 @@ const INVITE_ERROR_FIELDS: Record<string, "emailError" | "roleError"> = {
 };
 
 /** Maps a create_invitation error to the field it concerns, or to the whole form. */
-export function inviteErrorFields(error: { code?: string; message: string }) {
+export function inviteErrorFields(error: { code?: string; message: string }, t: Translate) {
   const key = rpcErrorKey(error);
   const field = (key && INVITE_ERROR_FIELDS[key]) || "formError";
 
-  return { emailError: "", roleError: "", formError: "", [field]: rpcErrorMessage(error) };
+  return { emailError: "", roleError: "", formError: "", [field]: rpcErrorMessage(error, t) };
 }
 
 async function submitInvitation(values: InviteValues, store: MembersStoreApi) {
-  const { accountId = "" } = membersContext(store);
+  const { accountId, t } = store.context;
   const { data: token, error } = await createClient().rpc("create_invitation", {
     p_account_id: accountId,
     p_email: normalizeEmail(values.email),
@@ -153,7 +162,7 @@ async function submitInvitation(values: InviteValues, store: MembersStoreApi) {
   });
 
   if (error) {
-    store.setValues({ invite: inviteErrorFields(error) });
+    store.setValues({ invite: inviteErrorFields(error, t) });
 
     return;
   }
@@ -167,11 +176,11 @@ async function submitInvitation(values: InviteValues, store: MembersStoreApi) {
  * confirmation stays open for another try.
  */
 async function runMemberAction({ type, targetId, targetName, role }: ActionValues, store: MembersStoreApi) {
-  const { accountId = "", router } = membersContext(store);
+  const { accountId, router, t } = store.context;
   const supabase = createClient();
   const failed = (error: PostgrestError | null) => {
     if (error) {
-      toast.danger(rpcErrorMessage(error));
+      toast.danger(rpcErrorMessage(error, t));
     }
 
     return error !== null;
@@ -185,7 +194,7 @@ async function runMemberAction({ type, targetId, targetName, role }: ActionValue
         return;
       }
 
-      toast.success(`${targetName} is now ${ROLE_LABELS[role].toLowerCase()}.`);
+      toast.success(t("Members.roleChanged", { name: targetName, role: t(`Roles.${role}`) }));
       store.proxy.members.reload();
       break;
     }
@@ -196,7 +205,7 @@ async function runMemberAction({ type, targetId, targetName, role }: ActionValue
         return;
       }
 
-      toast.success(`${targetName} was removed from the account.`);
+      toast.success(t("Members.removed", { name: targetName }));
       store.proxy.members.reload();
       break;
     }
@@ -207,10 +216,10 @@ async function runMemberAction({ type, targetId, targetName, role }: ActionValue
         return;
       }
 
-      toast.success(`${targetName} is now the owner.`);
+      toast.success(t("Members.transferred", { name: targetName }));
       store.proxy.members.reload();
       // The caller's own role changed: re-render the server-side account context.
-      router?.refresh();
+      router.refresh();
       break;
     }
     case "leave": {
@@ -220,8 +229,8 @@ async function runMemberAction({ type, targetId, targetName, role }: ActionValue
         return;
       }
 
-      toast.success(`You left ${targetName}.`);
-      router?.push(routes.accounts);
+      toast.success(t("Members.left", { account: targetName }));
+      router.push(routes.accounts);
       break;
     }
     case "revoke": {
@@ -231,7 +240,7 @@ async function runMemberAction({ type, targetId, targetName, role }: ActionValue
         return;
       }
 
-      toast.success(`Invitation for ${targetName} revoked.`);
+      toast.success(t("Members.revoked", { email: targetName }));
       store.proxy.invitations.reload();
       break;
     }
@@ -268,7 +277,7 @@ const membersConfig = () => ({
     email: {
       value: "",
       isRequired: true,
-      validate: (value: string, values: InviteValues) => values.emailError || validateEmail(value) || undefined,
+      validate: (value: string, values: InviteValues, t: TranslateFn) => values.emailError || validateEmail(value, t) || undefined,
       setter: () => ({ emailError: "" }),
     },
     role: {

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { Envelope } from "@gravity-ui/icons";
 import { Button } from "@heroui/react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useCaptcha } from "@/core/auth/captcha";
@@ -26,6 +27,7 @@ interface CheckEmailProps {
 
 /** "Open the link we sent" screen with a resend button for the sign-up confirmation email. */
 export function CheckEmail({ email, title, children, onBack }: CheckEmailProps) {
+  const t = useTranslations();
   const captcha = useCaptcha();
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function CheckEmail({ email, title, children, onBack }: CheckEmailProps) 
     captcha.reset();
 
     if (error) {
-      setError(authErrorMessage(error));
+      setError(authErrorMessage(error, t));
       setStatus("idle");
 
       return;
@@ -62,7 +64,7 @@ export function CheckEmail({ email, title, children, onBack }: CheckEmailProps) 
         title={title}
       />
       {error && <Notice>{error}</Notice>}
-      {status === "sent" && <Notice status="success">A new link is on its way to {email}.</Notice>}
+      {status === "sent" && <Notice status="success">{t("Auth.checkEmail.resent", { email })}</Notice>}
       {captcha.widget}
       <div className="flex flex-col gap-2">
         <Button
@@ -72,7 +74,7 @@ export function CheckEmail({ email, title, children, onBack }: CheckEmailProps) 
           variant="secondary"
           onPress={resend}
         >
-          Resend email
+          {t("Auth.checkEmail.resend")}
         </Button>
         {onBack ? (
           <Button
@@ -80,7 +82,7 @@ export function CheckEmail({ email, title, children, onBack }: CheckEmailProps) 
             variant="ghost"
             onPress={onBack}
           >
-            Back to sign in
+            {t("Common.backToSignIn")}
           </Button>
         ) : (
           <ButtonLink
@@ -88,7 +90,7 @@ export function CheckEmail({ email, title, children, onBack }: CheckEmailProps) 
             href={routes.signIn}
             variant="ghost"
           >
-            Back to sign in
+            {t("Common.backToSignIn")}
           </ButtonLink>
         )}
       </div>

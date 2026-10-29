@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
 import NextLink from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { routes } from "@/core/config/routes";
 import { siteConfig } from "@/core/config/site";
+import { LocaleSwitcher } from "@/core/i18n/components/locale-switcher";
 import { BrandLogo, BrandMark } from "@/core/ui/brand-logo";
 import { ThemeSwitch } from "@/core/ui/theme-switch";
 
@@ -25,6 +27,7 @@ export function AuthShell({ children, headerEnd }: { children: ReactNode; header
           </NextLink>
           <div className="flex min-w-0 items-center gap-2">
             {headerEnd}
+            <LocaleSwitcher />
             <ThemeSwitch />
           </div>
         </header>
@@ -38,7 +41,9 @@ export function AuthShell({ children, headerEnd }: { children: ReactNode; header
 }
 
 /** Brand panel. Replace with the product's own visual (screenshot, testimonial). */
-function AuthAside() {
+async function AuthAside() {
+  const t = await getTranslations("Site");
+
   return (
     <aside className="relative hidden w-1/2 overflow-hidden bg-accent text-accent-foreground lg:flex lg:flex-col lg:justify-end lg:p-12">
       <div
@@ -47,8 +52,8 @@ function AuthAside() {
       />
       <div className="relative flex flex-col gap-4">
         <BrandMark className="size-12 text-white/20" />
-        <p className="text-3xl font-semibold leading-tight">{siteConfig.tagline}</p>
-        <p className="text-accent-foreground/70">{siteConfig.description}</p>
+        <p className="text-3xl font-semibold leading-tight">{t("tagline")}</p>
+        <p className="text-accent-foreground/70">{t("description")}</p>
       </div>
     </aside>
   );

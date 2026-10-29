@@ -1,39 +1,51 @@
-/**
- * Messages for the error keys raised by the tenancy RPCs
- * (supabase/schemas/31_members.sql, 32_invitations.sql). The key is the
- * Postgres error message; check-constraint errors are matched by constraint
- * name.
- */
-const RPC_ERRORS: Record<string, string> = {
-  not_authenticated: "Your session has ended. Sign in again.",
-  not_allowed: "You don't have permission to do that.",
-  member_not_found: "This person is not a member of the account.",
-  invalid_role: "This role can't be given.",
-  owner_cannot_leave: "The owner can't leave the account. Transfer ownership first.",
-  already_member: "This person is already a member.",
-  invitation_not_found: "This invitation doesn't exist or is addressed to another email.",
-  invitation_closed: "This invitation has already been used or withdrawn.",
-  invitation_expired: "This invitation has expired. Ask for a new one.",
-  account_invitations_email_format: "Enter a valid email address.",
-};
+import type { Messages } from "next-intl";
 
-const FALLBACK = "Something went wrong. Try again.";
+import type { Translate } from "@/core/i18n/translate";
+import { captureException } from "@/core/errors";
+
+type RpcErrorKey = Exclude<keyof Messages["RpcErrors"], "fallback">;
+
+/**
+ * Error keys raised by the tenancy RPCs (supabase/schemas/31_members.sql,
+ * 32_invitations.sql), with their texts in the RpcErrors namespace. The key
+ * is the Postgres error message; check-constraint errors are matched by
+ * constraint name.
+ */
+const RPC_ERROR_KEYS = [
+  "not_authenticated",
+  "not_allowed",
+  "member_not_found",
+  "invalid_role",
+  "owner_cannot_leave",
+  "already_member",
+  "invitation_not_found",
+  "invitation_closed",
+  "invitation_expired",
+  "account_invitations_email_format",
+] as const satisfies readonly RpcErrorKey[];
+
+const isRpcErrorKey = (value: string): value is RpcErrorKey => (RPC_ERROR_KEYS as readonly string[]).includes(value);
 
 /** The error key of an RPC error, or null if it is not one of ours. */
-export function rpcErrorKey(error: { code?: string; message: string }) {
-  if (Object.hasOwn(RPC_ERRORS, error.message)) {
+export function rpcErrorKey(error: { code?: string; message: string }): RpcErrorKey | null {
+  if (isRpcErrorKey(error.message)) {
     return error.message;
   }
 
   if (error.code === "23514") {
-    return Object.keys(RPC_ERRORS).find((key) => error.message.includes(`"${key}"`)) ?? null;
+    return RPC_ERROR_KEYS.find((key) => error.message.includes(`"${key}"`)) ?? null;
   }
 
   return null;
 }
 
-export function rpcErrorMessage(error: { code?: string; message: string }) {
+/** The text for an RPC error. Errors that are not ours (a bug, an outage) are reported and get a generic text. */
+export function rpcErrorMessage(error: { code?: string; message: string }, t: Translate) {
   const key = rpcErrorKey(error);
 
-  return key ? RPC_ERRORS[key] : FALLBACK;
+  if (!key) {
+    captureException(error, { source: "rpc" });
+  }
+
+  return t(`RpcErrors.${key ?? "fallback"}`);
 }

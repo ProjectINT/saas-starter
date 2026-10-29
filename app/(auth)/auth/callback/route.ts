@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { safeNextPath } from "@/core/auth/redirect";
 import { routes } from "@/core/config/routes";
+import { syncProfileLocale } from "@/core/i18n/locale";
 import { createClient } from "@/core/supabase/server";
 
 /**
@@ -17,9 +18,11 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      await syncProfileLocale(supabase, data.user.id);
+
       return NextResponse.redirect(new URL(safeNextPath(searchParams.get("next")), request.url));
     }
   }

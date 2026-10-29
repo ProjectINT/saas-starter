@@ -1,21 +1,25 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { siteConfig } from "@/core/config/site";
+import { pageMetadata } from "@/core/i18n/metadata";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const generateMetadata = pageMetadata("privacyPolicy");
 
-// Placeholder. Replace with a policy that matches your data processing before launch.
-export default function PrivacyPolicyPage() {
+// Placeholder texts (Legal.privacy in the dictionary). Replace them with a
+// policy that matches your data processing before launch.
+export default async function PrivacyPolicyPage() {
+  const t = await getTranslations("Legal.privacy");
+
   return (
     <>
-      <h1>Privacy Policy</h1>
-      <p className="text-muted">Placeholder text. Replace it with the privacy policy of your product.</p>
-      <h2>1. Data we collect</h2>
-      <p>{siteConfig.name} stores your email address, profile details and the data you add to your accounts.</p>
-      <h2>2. How we use it</h2>
-      <p>To provide the service, secure your account and contact you about it.</p>
-      <h2>3. Contact</h2>
-      <p>Privacy questions: add your contact address here.</p>
+      <h1>{t("title")}</h1>
+      <p className="text-muted">{t("placeholder")}</p>
+      <h2>{t("collectTitle")}</h2>
+      <p>{t("collect", { site: siteConfig.name })}</p>
+      <h2>{t("useTitle")}</h2>
+      <p>{t("use")}</p>
+      <h2>{t("contactTitle")}</h2>
+      <p>{t("contact")}</p>
     </>
   );
 }

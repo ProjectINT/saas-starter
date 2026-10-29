@@ -2,6 +2,7 @@
 
 import { Eye, EyeSlash } from "@gravity-ui/icons";
 import { Button, Description, FieldError, InputGroup, Label, TextField } from "@heroui/react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 interface PasswordFieldProps {
@@ -16,6 +17,7 @@ interface PasswordFieldProps {
 
 /** Required password input with a show/hide toggle. */
 export function PasswordField({ label, name, autoComplete, description, value, onChange, validate }: PasswordFieldProps) {
+  const t = useTranslations("Auth");
   const [isVisible, setIsVisible] = useState(false);
 
   return (
@@ -35,7 +37,7 @@ export function PasswordField({ label, name, autoComplete, description, value, o
         <InputGroup.Suffix className="pe-0">
           <Button
             isIconOnly
-            aria-label={isVisible ? "Hide password" : "Show password"}
+            aria-label={isVisible ? t("hidePassword") : t("showPassword")}
             size="sm"
             variant="ghost"
             onPress={() => setIsVisible(!isVisible)}

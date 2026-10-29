@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 
 import { publicEnv } from "@/core/config/public-env";
@@ -77,6 +78,9 @@ export function Captcha({ ref, onToken }: CaptchaProps) {
   const widgetRef = useRef<{ api: CaptchaApi; id: string } | null>(null);
   const onTokenRef = useRef(onToken);
   const [failed, setFailed] = useState(false);
+  const t = useTranslations("Auth");
+  // Read once: the widget is rendered on mount and keeps its language.
+  const locale = useLocale();
 
   useEffect(() => {
     onTokenRef.current = onToken;
@@ -112,6 +116,8 @@ export function Captcha({ ref, onToken }: CaptchaProps) {
             callback: (token: string) => onTokenRef.current(token),
             "expired-callback": () => onTokenRef.current(null),
             "error-callback": () => onTokenRef.current(null),
+            // Turnstile and hCaptcha name the widget language differently.
+            ...(provider === "turnstile" ? { language: locale } : { hl: locale }),
           }),
         };
       })
@@ -129,10 +135,11 @@ export function Captcha({ ref, onToken }: CaptchaProps) {
         widgetRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language applies on the next page load
   }, []);
 
   if (failed) {
-    return <p className="text-sm text-danger">The captcha could not load. Disable blockers for this site and reload the page.</p>;
+    return <p className="text-sm text-danger">{t("captchaFailed")}</p>;
   }
 
   return (

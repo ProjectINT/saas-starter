@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useForm, useStoreContext } from "palistor";
+import { useTranslations } from "next-intl";
+import { useForm, useStoreContext, useTranslator } from "palistor";
 import { useState } from "react";
 
 import { createMembersStore, type MembersContext } from "../members-store";
@@ -13,13 +14,15 @@ import { OpenInvitations } from "./open-invitations";
 
 /** The members page: roster, pending invitations and the invite dialog, all on one store. */
 export function MembersView() {
+  const t = useTranslations();
   const { account, can } = useAccount();
   const router = useRouter();
   const [store] = useState(createMembersStore);
   const canInvite = can("members.invite");
 
   // The lists load once the account id is in the context, i.e. after mount in the browser.
-  useStoreContext(store, { accountId: account.id, router } satisfies MembersContext);
+  useStoreContext(store, { accountId: account.id, router, t } satisfies MembersContext);
+  useTranslator(store, t);
 
   const form = useForm(store);
 
@@ -27,8 +30,8 @@ export function MembersView() {
     <>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Members</h1>
-          <p className="text-sm text-muted">People with access to {account.name}.</p>
+          <h1 className="text-2xl font-semibold">{t("Members.title")}</h1>
+          <p className="text-sm text-muted">{t("Members.description", { account: account.name })}</p>
         </div>
         {canInvite && <InviteMemberDialog invite={form.invite} />}
       </div>

@@ -1,24 +1,30 @@
+import type { Translate } from "@/core/i18n/translate";
+
 // Mirrors the accounts_slug_format check in supabase/schemas/21_accounts.sql:
 // 3-48 chars, lowercase letters, digits and inner hyphens. Reserved slugs and
 // uniqueness are checked by the database only.
+export const SLUG_MIN_LENGTH = 3;
 
 export const SLUG_MAX_LENGTH = 48;
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$/;
 
-export const SLUG_HINT = "Lowercase letters, digits and hyphens, 3-48 characters.";
+export const slugHint = (t: Translate) => t("Validation.slugHint", { min: SLUG_MIN_LENGTH, max: SLUG_MAX_LENGTH });
 
-export function validateSlug(value: string) {
-  if (value.length < 3) {
-    return "Use at least 3 characters.";
+/** True if the value could be an account slug; for routing, where no message is shown. */
+export const isValidSlug = (value: string) => SLUG_PATTERN.test(value);
+
+export function validateSlug(value: string, t: Translate) {
+  if (value.length < SLUG_MIN_LENGTH) {
+    return t("Validation.slugTooShort", { min: SLUG_MIN_LENGTH });
   }
 
   if (value.length > SLUG_MAX_LENGTH) {
-    return `Use at most ${SLUG_MAX_LENGTH} characters.`;
+    return t("Validation.textTooLong", { max: SLUG_MAX_LENGTH });
   }
 
-  if (!SLUG_PATTERN.test(value)) {
-    return "Use lowercase letters, digits and hyphens; start and end with a letter or digit.";
+  if (!isValidSlug(value)) {
+    return t("Validation.slugFormat");
   }
 
   return null;

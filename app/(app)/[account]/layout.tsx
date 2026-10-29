@@ -6,13 +6,14 @@ import { notFound } from "next/navigation";
 import { SignOutButton } from "@/core/auth/components/sign-out-button";
 import { requireClaims } from "@/core/auth/session";
 import { accountPath } from "@/core/config/routes";
+import { LocaleSwitcher } from "@/core/i18n/components/locale-switcher";
 import { getAccountContext, listMyAccounts } from "@/core/tenancy/accounts";
 import { AccountNav } from "@/core/tenancy/components/account-nav";
 import { AccountProvider } from "@/core/tenancy/components/account-provider";
 import { AccountSwitcher } from "@/core/tenancy/components/account-switcher";
 import { BrandMark } from "@/core/ui/brand-logo";
 import { ThemeSwitch } from "@/core/ui/theme-switch";
-import { validateSlug } from "@/core/validation/slug";
+import { isValidSlug } from "@/core/validation/slug";
 
 type Props = { children: ReactNode; params: Promise<{ account: string }> };
 
@@ -24,7 +25,7 @@ type Props = { children: ReactNode; params: Promise<{ account: string }> };
  */
 export default async function AccountLayout({ children, params }: Props) {
   const { account: slug } = await params;
-  const context = validateSlug(slug) ? null : await getAccountContext(slug);
+  const context = isValidSlug(slug) ? await getAccountContext(slug) : null;
 
   if (!context) {
     notFound();
@@ -53,6 +54,7 @@ export default async function AccountLayout({ children, params }: Props) {
             <AccountSwitcher memberships={memberships} />
             <div className="ml-auto flex min-w-0 items-center gap-2">
               <span className="hidden truncate text-sm text-muted md:inline">{claims.email}</span>
+              <LocaleSwitcher />
               <ThemeSwitch />
               <SignOutButton />
             </div>

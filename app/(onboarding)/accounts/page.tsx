@@ -1,19 +1,18 @@
-import type { Metadata } from "next";
-
 import { ChevronRight, Plus } from "@gravity-ui/icons";
 import { cookies } from "next/headers";
 import NextLink from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { AuthHeading } from "@/core/auth/components/auth-heading";
 import { accountPath, routes } from "@/core/config/routes";
+import { pageMetadata } from "@/core/i18n/metadata";
 import { listMyAccounts, listMyInvitations } from "@/core/tenancy/accounts";
 import { InvitationResponse } from "@/core/tenancy/components/invitation-response";
 import { LAST_ACCOUNT_COOKIE } from "@/core/tenancy/last-account";
-import { ROLE_LABELS } from "@/core/tenancy/roles";
 import { ButtonLink } from "@/core/ui/links";
 
-export const metadata: Metadata = { title: "Choose an account" };
+export const generateMetadata = pageMetadata("accounts");
 
 /**
  * Where sign-in and email links land. Pending invitations are always shown
@@ -22,7 +21,7 @@ export const metadata: Metadata = { title: "Choose an account" };
  * account (or the only one) -> straight in, several -> pick one.
  */
 export default async function AccountsPage() {
-  const [memberships, invitations, cookieStore] = await Promise.all([listMyAccounts(), listMyInvitations(), cookies()]);
+  const [memberships, invitations, cookieStore, t] = await Promise.all([listMyAccounts(), listMyInvitations(), cookies(), getTranslations()]);
 
   if (invitations.length === 0) {
     if (memberships.length === 0) {
@@ -40,12 +39,12 @@ export default async function AccountsPage() {
   return (
     <>
       <AuthHeading
-        description={accountsDescription(invitations.length, memberships.length)}
-        title={memberships.length > 0 ? "Choose an account" : "You have an invitation"}
+        description={t(`Accounts.picker.${pickerDescription(invitations.length, memberships.length)}`)}
+        title={memberships.length > 0 ? t("Accounts.picker.title") : t("Accounts.picker.invitedTitle")}
       />
       {invitations.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted">Invitations</h2>
+          <h2 className="text-sm font-medium text-muted">{t("Accounts.picker.invitations")}</h2>
           <ul className="flex flex-col gap-2">
             {invitations.map((invitation) => (
               <li
@@ -55,8 +54,9 @@ export default async function AccountsPage() {
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate font-medium">{invitation.account_name}</span>
                   <span className="text-sm text-muted">
-                    {ROLE_LABELS[invitation.role]}
-                    {invitation.inviter_name && ` · invited by ${invitation.inviter_name}`}
+                    {invitation.inviter_name
+                      ? t("Accounts.picker.invitedBy", { role: t(`Roles.${invitation.role}`), name: invitation.inviter_name })
+                      : t(`Roles.${invitation.role}`)}
                   </span>
                 </div>
                 <InvitationResponse invitationId={invitation.id} />
@@ -67,7 +67,7 @@ export default async function AccountsPage() {
       )}
       {memberships.length > 0 && (
         <section className="flex flex-col gap-2">
-          {invitations.length > 0 && <h2 className="text-sm font-medium text-muted">Your accounts</h2>}
+          {invitations.length > 0 && <h2 className="text-sm font-medium text-muted">{t("Accounts.picker.yourAccounts")}</h2>}
           <ul className="flex flex-col gap-2">
             {memberships.map(({ account, role }) => (
               <li key={account.id}>
@@ -77,7 +77,7 @@ export default async function AccountsPage() {
                 >
                   <span className="flex min-w-0 flex-col">
                     <span className="truncate font-medium">{account.name}</span>
-                    <span className="text-sm text-muted">{ROLE_LABELS[role]}</span>
+                    <span className="text-sm text-muted">{t(`Roles.${role}`)}</span>
                   </span>
                   <ChevronRight className="size-4 shrink-0 text-muted" />
                 </NextLink>
@@ -92,18 +92,16 @@ export default async function AccountsPage() {
         variant="tertiary"
       >
         <Plus className="size-4" />
-        {memberships.length > 0 ? "Create another account" : "Create your own account"}
+        {memberships.length > 0 ? t("Accounts.picker.createAnother") : t("Accounts.picker.createOwn")}
       </ButtonLink>
     </>
   );
 }
 
-function accountsDescription(invitations: number, accounts: number) {
+function pickerDescription(invitations: number, accounts: number) {
   if (invitations === 0) {
-    return "You are a member of several accounts.";
+    return "several";
   }
 
-  return accounts > 0
-    ? "Join an account you were invited to, or open one of yours."
-    : "Join the account you were invited to, or create your own.";
+  return accounts > 0 ? "joinOrOpen" : "joinOrCreate";
 }

@@ -2,6 +2,7 @@
 
 import { ArrowRightFromSquare } from "@gravity-ui/icons";
 import { Button, toast } from "@heroui/react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { authErrorMessage } from "@/core/auth/errors";
@@ -19,6 +20,7 @@ export function SignOutButton({ redirectTo = routes.signIn, variant = "ghost" }:
   redirectTo?: string;
   variant?: "ghost" | "secondary";
 }) {
+  const t = useTranslations();
   const [isPending, setIsPending] = useState(false);
 
   async function signOut() {
@@ -28,7 +30,7 @@ export function SignOutButton({ redirectTo = routes.signIn, variant = "ghost" }:
 
     // On a network error supabase-js keeps the local session, so stay put.
     if (error) {
-      toast.danger(authErrorMessage(error));
+      toast.danger(authErrorMessage(error, t));
       setIsPending(false);
 
       return;
@@ -45,7 +47,7 @@ export function SignOutButton({ redirectTo = routes.signIn, variant = "ghost" }:
       onPress={signOut}
     >
       <ArrowRightFromSquare className="size-4" />
-      Sign out
+      {t("Common.signOut")}
     </Button>
   );
 }

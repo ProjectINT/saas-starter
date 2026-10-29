@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { englishT } from "@/core/i18n/testing";
+
 import { createAccountErrorFields, createAccountStore } from "./create-account-store";
 
 const supabase = vi.hoisted(() => ({ rpc: vi.fn() }));
@@ -11,7 +13,8 @@ const router = { push: vi.fn() };
 function setup() {
   const store = createAccountStore();
 
-  store.setContext({ router });
+  store.setContext({ router, t: englishT });
+  store.setTranslator(englishT);
 
   return store.proxy.account;
 }
@@ -89,13 +92,13 @@ describe("createAccountErrorFields", () => {
       createAccountErrorFields({
         code: "23514",
         message: "new row for relation \"accounts\" violates check constraint \"accounts_slug_not_reserved\"",
-      }).slugError
+      }, englishT).slugError
     ).toMatch(/reserved/);
     expect(
       createAccountErrorFields({
         code: "23514",
         message: "new row for relation \"accounts\" violates check constraint \"accounts_slug_format\"",
-      }).slugError
+      }, englishT).slugError
     ).toMatch(/Lowercase/);
   });
 
@@ -104,12 +107,12 @@ describe("createAccountErrorFields", () => {
       createAccountErrorFields({
         code: "23514",
         message: "new row for relation \"accounts\" violates check constraint \"accounts_name_check\"",
-      }).nameError
+      }, englishT).nameError
     ).toMatch(/100 characters/);
   });
 
   it("falls back to a form error", () => {
-    expect(createAccountErrorFields({ code: "42501", message: "Not authenticated" })).toEqual({
+    expect(createAccountErrorFields({ code: "42501", message: "Not authenticated" }, englishT)).toEqual({
       nameError: "",
       slugError: "",
       formError: "Could not create the account. Try again.",

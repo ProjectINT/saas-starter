@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { safeNextPath } from "@/core/auth/redirect";
 import { routes } from "@/core/config/routes";
+import { syncProfileLocale } from "@/core/i18n/locale";
 import { createClient } from "@/core/supabase/server";
 
 const EMAIL_OTP_TYPES: readonly string[] = [
@@ -30,9 +31,13 @@ export async function GET(request: NextRequest) {
 
   if (tokenHash && isEmailOtpType(type)) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+    const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
 
     if (!error) {
+      if (data.user) {
+        await syncProfileLocale(supabase, data.user.id);
+      }
+
       const next = type === "recovery" ? routes.resetPassword : safeNextPath(searchParams.get("next"));
 
       return NextResponse.redirect(new URL(next, request.url));

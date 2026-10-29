@@ -13,7 +13,7 @@ import type { Database } from "@/core/db/database.types";
  * routes:
  * - signed out, non-public page -> redirect to sign-in with `next`;
  * - signed out, /api            -> 401;
- * - signed in, sign-in/sign-up  -> redirect into the app.
+ * - signed in, sign-in/sign-up  -> redirect into the app (GET only).
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -56,7 +56,9 @@ export async function updateSession(request: NextRequest) {
     return withSession(NextResponse.redirect(signIn), response);
   }
 
-  if (isSignedIn && isGuestOnlyRoute(pathname)) {
+  // Page loads only: Server Actions POST to the page's own URL, and the
+  // sign-in form calls one right after the session exists.
+  if (isSignedIn && isGuestOnlyRoute(pathname) && request.method === "GET") {
     return withSession(NextResponse.redirect(new URL(safeNextPath(searchParams.get("next")), request.url)), response);
   }
 

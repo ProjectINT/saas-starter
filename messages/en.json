@@ -1,0 +1,275 @@
+{
+  "Common": {
+    "cancel": "Cancel",
+    "done": "Done",
+    "tryAgain": "Try again",
+    "backToSignIn": "Back to sign in",
+    "signOut": "Sign out",
+    "email": "Email",
+    "language": "Language",
+    "lightTheme": "Switch to light theme",
+    "darkTheme": "Switch to dark theme"
+  },
+  "Site": {
+    "description": "Next.js + Supabase multi-tenant SaaS starter",
+    "tagline": "Everything your team needs, in one workspace."
+  },
+  "Roles": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "member": "Member"
+  },
+  "Navigation": {
+    "account": "Account",
+    "overview": "Overview",
+    "members": "Members"
+  },
+  "Validation": {
+    "emailRequired": "Enter an email address.",
+    "emailInvalid": "Enter a valid email address.",
+    "passwordTooShort": "Use at least {min, plural, one {# character} other {# characters}}.",
+    "passwordLettersDigits": "Use both letters and digits.",
+    "passwordHint": "Use at least {min, plural, one {# character} other {# characters}} with letters and digits.",
+    "passwordMismatch": "Passwords do not match.",
+    "accountNameRequired": "Enter the account name.",
+    "textTooLong": "Use at most {max, plural, one {# character} other {# characters}}.",
+    "slugTooShort": "Use at least {min, plural, one {# character} other {# characters}}.",
+    "slugFormat": "Use lowercase letters, digits and hyphens; start and end with a letter or digit.",
+    "slugHint": "Lowercase letters, digits and hyphens, {min}-{max} characters."
+  },
+  "RpcErrors": {
+    "not_authenticated": "Your session has ended. Sign in again.",
+    "not_allowed": "You don't have permission to do that.",
+    "member_not_found": "This person is not a member of the account.",
+    "invalid_role": "This role can't be given.",
+    "owner_cannot_leave": "The owner can't leave the account. Transfer ownership first.",
+    "already_member": "This person is already a member.",
+    "invitation_not_found": "This invitation doesn't exist or is addressed to another email.",
+    "invitation_closed": "This invitation has already been used or withdrawn.",
+    "invitation_expired": "This invitation has expired. Ask for a new one.",
+    "account_invitations_email_format": "Enter a valid email address.",
+    "fallback": "Something went wrong. Try again."
+  },
+  "Errors": {
+    "title": "Something went wrong",
+    "description": "This page could not be shown. Try again; if it keeps happening, come back later.",
+    "reference": "Error reference: {digest}",
+    "notFoundTitle": "Page not found",
+    "notFound": "The page does not exist, or you don't have access to it.",
+    "home": "Go to the start page"
+  },
+  "Auth": {
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "captchaFailed": "The captcha could not load. Disable blockers for this site and reload the page.",
+    "continueWith": "Continue with {provider}",
+    "or": "or",
+    "signIn": {
+      "title": "Welcome back",
+      "description": "Sign in to your account to continue.",
+      "forgotPassword": "Forgot password?",
+      "submit": "Sign in",
+      "noAccount": "No account yet? <link>Sign up</link>",
+      "notConfirmedTitle": "Confirm your email",
+      "notConfirmed": "Your email address is not confirmed yet. Open the link we sent to <strong>{email}</strong>, or request a new one."
+    },
+    "signUp": {
+      "title": "Create your account",
+      "description": "Sign up to get started. It takes a minute.",
+      "terms": "I agree to the <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>",
+      "submit": "Create account",
+      "haveAccount": "Already have an account? <link>Sign in</link>",
+      "sentTitle": "Check your email",
+      "sent": "We sent a confirmation link to <strong>{email}</strong>. Open it to finish signing up."
+    },
+    "checkEmail": {
+      "resend": "Resend email",
+      "resent": "A new link is on its way to {email}."
+    },
+    "forgotPassword": {
+      "title": "Forgot your password?",
+      "description": "Enter your email and we will send you a link to set a new password.",
+      "submit": "Send reset link",
+      "remembered": "Remembered it? <link>Back to sign in</link>",
+      "sentTitle": "Check your email",
+      "sent": "If an account exists for <strong>{email}</strong>, we sent it a link to set a new password. The link expires in an hour."
+    },
+    "resetPassword": {
+      "title": "Set a new password",
+      "description": "For {email}.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "Update password",
+      "updated": "Your password has been updated."
+    },
+    "linkError": {
+      "title": "This link has expired",
+      "description": "Email links work once and expire after an hour. Request a new one and use the latest email."
+    },
+    "callbackError": {
+      "title": "Sign-in was not completed",
+      "description": "The sign-in was cancelled or the link was opened in a different browser. Try again from this browser."
+    },
+    "resetPasswordLink": "Reset password",
+    "errors": {
+      "invalid_credentials": "Invalid email or password.",
+      "email_not_confirmed": "Confirm your email address first.",
+      "user_already_exists": "An account with this email already exists.",
+      "weak_password": "This password is too weak. Use at least {min, plural, one {# character} other {# characters}} with letters and digits.",
+      "same_password": "The new password must be different from the current one.",
+      "email_address_invalid": "This email address cannot be used.",
+      "signup_disabled": "Sign-ups are currently disabled.",
+      "user_banned": "This account is blocked. Contact support.",
+      "captcha_failed": "The captcha check failed. Try again.",
+      "over_request_rate_limit": "Too many attempts. Wait a few minutes and try again.",
+      "over_email_send_rate_limit": "Too many emails sent. Wait a few minutes and try again.",
+      "session_expired": "Your session has expired. Sign in again.",
+      "reauthentication_needed": "Sign in again to change your password.",
+      "network": "Cannot reach the server. Check your connection and try again.",
+      "unknown": "Something went wrong. Try again."
+    }
+  },
+  "Accounts": {
+    "picker": {
+      "title": "Choose an account",
+      "invitedTitle": "You have an invitation",
+      "several": "You are a member of several accounts.",
+      "joinOrOpen": "Join an account you were invited to, or open one of yours.",
+      "joinOrCreate": "Join the account you were invited to, or create your own.",
+      "invitations": "Invitations",
+      "yourAccounts": "Your accounts",
+      "invitedBy": "{role} · invited by {name}",
+      "createAnother": "Create another account",
+      "createOwn": "Create your own account"
+    },
+    "switcher": {
+      "label": "Switch account",
+      "create": "Create account"
+    },
+    "create": {
+      "titleFirst": "Create your first account",
+      "titleAnother": "Create another account",
+      "description": "An account is the shared space for your team: members, settings and data.",
+      "back": "Back to your accounts",
+      "name": "Account name",
+      "namePlaceholder": "Acme Inc.",
+      "url": "URL",
+      "urlPlaceholder": "acme",
+      "submit": "Create account",
+      "slugTaken": "This URL is already taken.",
+      "slugReserved": "This URL is reserved. Choose another one.",
+      "nameInvalid": "Enter a name of up to {max, plural, one {# character} other {# characters}}.",
+      "failed": "Could not create the account. Try again."
+    },
+    "home": {
+      "role": "Your role: {role}",
+      "placeholder": "The account dashboard goes here."
+    }
+  },
+  "Members": {
+    "title": "Members",
+    "description": "People with access to {account}.",
+    "loadFailed": "Could not load the members.",
+    "you": "(you)",
+    "unknownUser": "Unknown user",
+    "actionsFor": "Actions for {name}",
+    "changeRole": "Change role to {role}",
+    "transfer": "Transfer ownership",
+    "remove": "Remove from account",
+    "leave": "Leave account",
+    "removeTitle": "Remove {name}?",
+    "removeBody": "They lose access to {account} right away. Only a new invitation brings them back.",
+    "removeConfirm": "Remove",
+    "transferTitle": "Make {name} the owner?",
+    "transferBody": "{name} becomes the owner of {account} and you become an admin. Only the new owner can transfer it back.",
+    "leaveTitle": "Leave {account}?",
+    "leaveBody": "You lose access to {account} right away. Only a new invitation brings you back.",
+    "leaveConfirm": "Leave",
+    "roleChanged": "{name} now has the {role} role.",
+    "removed": "{name} was removed from the account.",
+    "transferred": "{name} is now the owner.",
+    "left": "You left {account}.",
+    "revoked": "Invitation for {email} revoked.",
+    "invite": {
+      "open": "Invite member",
+      "title": "Invite to {account}",
+      "emailPlaceholder": "colleague@example.com",
+      "role": "Role",
+      "submit": "Create invitation",
+      "createdTitle": "Invitation created",
+      "created": "Send this link to {email}. It works for 7 days, only for that email address, and is shown only once.",
+      "link": "Invitation link",
+      "copy": "Copy link",
+      "copied": "Link copied.",
+      "copyFailed": "Could not copy. Select the link and copy it by hand.",
+      "another": "Invite another"
+    },
+    "pending": {
+      "title": "Pending invitations",
+      "loadFailed": "Could not load the pending invitations.",
+      "expires": "Expires {date}",
+      "expired": "Expired {date}",
+      "revoke": "Revoke"
+    }
+  },
+  "Invitations": {
+    "accept": "Accept",
+    "decline": "Decline",
+    "joined": "You joined {account}.",
+    "declined": "Invitation declined.",
+    "goToAccounts": "Go to your accounts",
+    "notFoundTitle": "Invitation not found",
+    "notFound": "The link is invalid, or the account no longer exists.",
+    "acceptedTitle": "Invitation already used",
+    "accepted": "This invitation has been accepted.",
+    "declinedTitle": "Invitation declined",
+    "declinedBody": "This invitation was declined. Ask for a new one to join.",
+    "revokedTitle": "Invitation withdrawn",
+    "revoked": "This invitation is no longer valid. Ask for a new one to join.",
+    "expiredTitle": "Invitation expired",
+    "expired": "Invitations are valid for 7 days. Ask for a new one to join.",
+    "wrongEmailTitle": "This invitation is for {email}",
+    "wrongEmail": "You are signed in as {current}. Sign in with {email} to accept.",
+    "joinTitle": "Join {account}",
+    "join": "{inviter} invited you to join with the {role} role.",
+    "someone": "A member"
+  },
+  "Metadata": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "forgotPassword": "Reset password",
+    "resetPassword": "Set a new password",
+    "authError": "Sign-in problem",
+    "accounts": "Choose an account",
+    "onboarding": "Create an account",
+    "invitation": "Invitation",
+    "members": "Members",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfUse": "Terms of Use"
+  },
+  "Legal": {
+    "privacy": {
+      "title": "Privacy Policy",
+      "placeholder": "Placeholder text. Replace it with the privacy policy of your product.",
+      "collectTitle": "1. Data we collect",
+      "collect": "{site} stores your email address, profile details and the data you add to your accounts.",
+      "useTitle": "2. How we use it",
+      "use": "To provide the service, secure your account and contact you about it.",
+      "contactTitle": "3. Contact",
+      "contact": "Privacy questions: add your contact address here."
+    },
+    "terms": {
+      "title": "Terms of Use",
+      "placeholder": "Placeholder text. Replace it with the terms of your product.",
+      "serviceTitle": "1. Service",
+      "service": "{site} provides a hosted service. These terms govern your use of it.",
+      "accountsTitle": "2. Accounts",
+      "accounts": "You are responsible for your account, its members and the activity in it.",
+      "contactTitle": "3. Contact",
+      "contact": "Questions about these terms: add your contact address here."
+    }
+  }
+}

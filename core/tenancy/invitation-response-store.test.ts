@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { englishT } from "@/core/i18n/testing";
+
 import { createInvitationResponseStore } from "./invitation-response-store";
 
 const supabase = vi.hoisted(() => ({ rpc: vi.fn() }));
@@ -13,7 +15,7 @@ const router = { push: vi.fn(), refresh: vi.fn() };
 function setup(invitationId = "inv-1") {
   const store = createInvitationResponseStore();
 
-  store.setContext({ invitationId, router });
+  store.setContext({ invitationId, router, t: englishT });
 
   return store.proxy.response;
 }

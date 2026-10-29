@@ -2,18 +2,20 @@
 
 import { Button, Form, toast } from "@heroui/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 
 import { authErrorMessage } from "@/core/auth/errors";
 import { routes } from "@/core/config/routes";
 import { createClient } from "@/core/supabase/client";
 import { Notice } from "@/core/ui/notice";
-import { PASSWORD_HINT, validatePassword } from "@/core/validation/password";
+import { passwordHint, validatePassword } from "@/core/validation/password";
 
 import { PasswordField } from "./password-field";
 
 /** Sets a new password for the signed-in user (after a recovery link or from settings). */
 export function ResetPasswordForm() {
+  const t = useTranslations();
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [isPending, setIsPending] = useState(false);
@@ -27,13 +29,13 @@ export function ResetPasswordForm() {
     const { error } = await createClient().auth.updateUser({ password });
 
     if (error) {
-      setError(authErrorMessage(error));
+      setError(authErrorMessage(error, t));
       setIsPending(false);
 
       return;
     }
 
-    toast.success("Your password has been updated.");
+    toast.success(t("Auth.resetPassword.updated"));
     router.replace(routes.accounts);
     router.refresh();
   }
@@ -46,25 +48,25 @@ export function ResetPasswordForm() {
       {error && <Notice>{error}</Notice>}
       <PasswordField
         autoComplete="new-password"
-        description={PASSWORD_HINT}
-        label="New password"
+        description={passwordHint(t)}
+        label={t("Auth.resetPassword.newPassword")}
         name="password"
-        validate={validatePassword}
+        validate={(value) => validatePassword(value, t)}
         value={password}
         onChange={setPassword}
       />
       <PasswordField
         autoComplete="new-password"
-        label="Confirm new password"
+        label={t("Auth.resetPassword.confirmPassword")}
         name="confirmPassword"
-        validate={(value) => (value === password ? null : "Passwords do not match.")}
+        validate={(value) => (value === password ? null : t("Validation.passwordMismatch"))}
       />
       <Button
         fullWidth
         isPending={isPending}
         type="submit"
       >
-        Update password
+        {t("Auth.resetPassword.submit")}
       </Button>
     </Form>
   );

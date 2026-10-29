@@ -16,6 +16,7 @@ import {
   TextField,
   toast,
 } from "@heroui/react";
+import { useTranslations } from "next-intl";
 import { useForm } from "palistor";
 import { type FormEvent } from "react";
 
@@ -23,7 +24,7 @@ import { textFieldProps } from "@/core/ui/field-props";
 import { Notice } from "@/core/ui/notice";
 import { EMAIL_MAX_LENGTH, normalizeEmail } from "@/core/validation/email";
 
-import { ROLE_LABELS, assignableRoles, isAccountRole } from "../roles";
+import { assignableRoles, isAccountRole } from "../roles";
 
 import { useAccount } from "./account-provider";
 
@@ -31,12 +32,14 @@ type Invite = MembersForm["invite"];
 
 /** "Invite member" button with the invitation dialog. Render only with members.invite. */
 export function InviteMemberDialog({ invite }: { invite: Invite }) {
+  const t = useTranslations("Members.invite");
+
   return (
     // Every opening starts from an empty form.
     <Modal onOpenChange={(isOpen) => isOpen && invite.reset()}>
       <Button size="sm">
         <Plus className="size-4" />
-        Invite member
+        {t("open")}
       </Button>
       <Modal.Backdrop>
         <Modal.Container size="sm">
@@ -77,6 +80,7 @@ function InviteDialogContent({ invite, onClose }: { invite: Invite; onClose: () 
 }
 
 function InviteForm({ invite, onClose }: { invite: Invite; onClose: () => void }) {
+  const t = useTranslations();
   const { account, role: myRole } = useAccount();
   const form = useForm(invite);
   const roles = assignableRoles(myRole);
@@ -93,7 +97,7 @@ function InviteForm({ invite, onClose }: { invite: Invite; onClose: () => void }
       onSubmit={handleSubmit}
     >
       <Modal.Header>
-        <Modal.Heading>Invite to {account.name}</Modal.Heading>
+        <Modal.Heading>{t("Members.invite.title", { account: account.name })}</Modal.Heading>
       </Modal.Header>
       <Modal.Body className="flex flex-col gap-4">
         {form.formError.value && <Notice>{form.formError.value}</Notice>}
@@ -103,8 +107,8 @@ function InviteForm({ invite, onClose }: { invite: Invite; onClose: () => void }
           type="email"
           {...textFieldProps(form.email)}
         >
-          <Label>Email</Label>
-          <Input placeholder="colleague@example.com" />
+          <Label>{t("Common.email")}</Label>
+          <Input placeholder={t("Members.invite.emailPlaceholder")} />
           <FieldError>{form.email.errorMessage}</FieldError>
         </TextField>
         <Select
@@ -113,7 +117,7 @@ function InviteForm({ invite, onClose }: { invite: Invite; onClose: () => void }
           value={form.role.value}
           onChange={(key) => isAccountRole(key) && form.role.onValueChange(key)}
         >
-          <Label>Role</Label>
+          <Label>{t("Members.invite.role")}</Label>
           <Select.Trigger>
             <Select.Value />
             <Select.Indicator />
@@ -125,9 +129,9 @@ function InviteForm({ invite, onClose }: { invite: Invite; onClose: () => void }
                 <ListBox.Item
                   key={item}
                   id={item}
-                  textValue={ROLE_LABELS[item]}
+                  textValue={t(`Roles.${item}`)}
                 >
-                  {ROLE_LABELS[item]}
+                  {t(`Roles.${item}`)}
                   <ListBox.ItemIndicator />
                 </ListBox.Item>
               ))}
@@ -140,13 +144,13 @@ function InviteForm({ invite, onClose }: { invite: Invite; onClose: () => void }
           variant="tertiary"
           onPress={onClose}
         >
-          Cancel
+          {t("Common.cancel")}
         </Button>
         <Button
           isPending={form.submitting}
           type="submit"
         >
-          Create invitation
+          {t("Members.invite.submit")}
         </Button>
       </Modal.Footer>
     </Form>
@@ -163,29 +167,28 @@ function InviteLink({ email, path, onClose, onInviteAnother }: {
   onClose: () => void;
   onInviteAnother: () => void;
 }) {
+  const t = useTranslations();
   const link = new URL(path, window.location.origin).toString();
 
   async function copy() {
     try {
       await navigator.clipboard.writeText(link);
-      toast.success("Link copied.");
+      toast.success(t("Members.invite.copied"));
     } catch {
-      toast.danger("Could not copy. Select the link and copy it by hand.");
+      toast.danger(t("Members.invite.copyFailed"));
     }
   }
 
   return (
     <>
       <Modal.Header>
-        <Modal.Heading>Invitation created</Modal.Heading>
+        <Modal.Heading>{t("Members.invite.createdTitle")}</Modal.Heading>
       </Modal.Header>
       <Modal.Body className="flex flex-col gap-4">
-        <p className="text-sm text-muted">
-          Send this link to {email}. It works for 7 days, only for that email address, and is shown only once.
-        </p>
+        <p className="text-sm text-muted">{t("Members.invite.created", { email })}</p>
         <TextField
           isReadOnly
-          aria-label="Invitation link"
+          aria-label={t("Members.invite.link")}
           value={link}
         >
           <InputGroup>
@@ -193,7 +196,7 @@ function InviteLink({ email, path, onClose, onInviteAnother }: {
             <InputGroup.Suffix>
               <Button
                 isIconOnly
-                aria-label="Copy link"
+                aria-label={t("Members.invite.copy")}
                 size="sm"
                 variant="ghost"
                 onPress={copy}
@@ -209,9 +212,9 @@ function InviteLink({ email, path, onClose, onInviteAnother }: {
           variant="tertiary"
           onPress={onInviteAnother}
         >
-          Invite another
+          {t("Members.invite.another")}
         </Button>
-        <Button onPress={onClose}>Done</Button>
+        <Button onPress={onClose}>{t("Common.done")}</Button>
       </Modal.Footer>
     </>
   );

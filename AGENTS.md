@@ -11,7 +11,7 @@ Multi-tenant SaaS template on Next.js 16 + Supabase. Read [README.md](README.md)
 
 - Every variable is declared in the zod schema in `core/config/env.ts` and listed in `.env.example`.
 - `NEXT_PUBLIC_*` values are read through `publicEnv` (`core/config/public-env.ts`), where each key is spelled out as a literal `process.env.NAME` so Next.js inlines it. Server-only values go through `serverEnv` (`core/config/server-env.ts`, guarded by `server-only`).
-- Never read `process.env` directly elsewhere.
+- Never read `process.env` directly elsewhere. Exceptions: `instrumentation.ts` may branch on `NEXT_RUNTIME`; dev-only script variables (`OPENAI_API_KEY` for `npm run i18n:translate`) are listed in `.env.example` but not in the app schema.
 
 ## Supabase clients
 
@@ -30,7 +30,8 @@ Identify the user on the server with `supabase.auth.getClaims()`, not `getSessio
 - Route paths live in `core/config/routes.ts`. A new page reachable without a session must be added to `PUBLIC_ROUTES` in `core/auth/public-routes.ts`; everything else requires one. A new top-level route also goes into `accounts_slug_not_reserved` (`supabase/schemas/21_accounts.sql`).
 - Every user-supplied redirect target (`next` in query strings, forms, callbacks) goes through `safeNextPath()`.
 - Sign-in, sign-up, password reset and resend run in the browser through `core/supabase/client` and pass `captcha.token` from `useCaptcha()`; reset the captcha after each call. Do not proxy them through API routes: Supabase Auth verifies the captcha and rate-limits per user IP.
-- Show Supabase Auth errors with `authErrorMessage(error)` (by error code), never `error.message`.
+- Show Supabase Auth errors with `authErrorMessage(error, t)` (by error code, texts in `Auth.errors`), never `error.message`.
+- `proxy.ts` sends signed-in users away from sign-in/sign-up on GET only: Server Actions POST to the page's own URL.
 
 ## Tenancy
 
@@ -38,7 +39,8 @@ Identify the user on the server with `supabase.auth.getClaims()`, not `getSessio
 - Client components read the account, role and permissions with `useAccount()` and hide controls with `useAccount().can(...)`. That is a UI hint only: the RPC or RLS policy is the guard.
 - Permission names are the generated union `Permission` (`core/tenancy/permissions.generated.ts`, written by `npm run db:types` from `public.role_permissions`). Which role holds which permission is read at runtime, never written in TS.
 - Role order comes from `ACCOUNT_ROLES` (enum order); compare with `outranks()`, offer roles with `assignableRoles()`. Both mirror the SQL rank rule; keep them in sync with `31_members.sql` / `32_invitations.sql`.
-- Tenant data is loaded and changed in the browser through palistor stores (see below): reads under RLS, writes as one RPC each. Show RPC errors with `rpcErrorMessage(error)` (keys in `core/tenancy/rpc-errors.ts`), never `error.message`.
+- Tenant data is loaded and changed in the browser through palistor stores (see below): reads under RLS, writes as one RPC each. Show RPC errors with `rpcErrorMessage(error, t)` (keys in `core/tenancy/rpc-errors.ts`, texts in `RpcErrors`), never `error.message`.
+- Role names are messages: ``t(`Roles.${role}`)``. A role added to the enum fails the typecheck until it has a `Roles` entry.
 
 ## UI
 
@@ -46,7 +48,7 @@ Identify the user on the server with `supabase.auth.getClaims()`, not `getSessio
 - Next.js links: `AppLink` / `ButtonLink` from `core/ui/links` (next/link with HeroUI classes), not HeroUI `Link` with `href`.
 - Theme colors through HeroUI tokens (`bg-background`, `bg-surface`, `text-muted`, `text-accent`, `text-danger`), so both themes work. Icons from `@gravity-ui/icons`.
 - Forms are palistor stores (below), except the auth screens in `core/auth`, which stay on HeroUI `Form` with `validationErrors`. Client rules in `core/validation` mirror the database or Supabase Auth settings and name what they mirror.
-- UI text is English until the i18n phase; keep strings in components, not concatenated from fragments.
+- No literal UI text in components: every string is a dictionary message (see Internationalization).
 
 ## State and forms (palistor)
 
@@ -54,7 +56,8 @@ Feature state and forms use [palistor](https://www.npmjs.com/package/palistor). 
 
 - The dependency is an exact npm version (`"palistor": "0.0.32"`). Never `file:`, the PaliRent submodule or copied sources; a missing feature or a bug means a new palistor release and a new pin.
 - One store per feature, no global store. The config is built by a function and the store is created on mount: `const [store] = useState(createMembersStore)` in the feature's root client component. A module-level store would be shared by every SSR request and keep data across accounts.
-- Shared values (account id, invitation id, the router from `useRouter()`) go into `store.context` through `useStoreContext(store, { ... } satisfies XContext)`, never into hidden fields. Each store exports its `XContext`; callbacks read it with one cast (the context is untyped in palistor).
+- Shared values (account id, invitation id, the router from `useRouter()`, the root translator from `useTranslations()`) go into `store.context` through `useStoreContext(store, { ... } satisfies XContext)`, never into hidden fields. Each store exports its `XContext`; submit callbacks type it in their store interface (`readonly context: XContext`), list resolvers read it as `Partial<XContext>` (empty until mount).
+- Texts: the root component also calls `useTranslator(store, t)`, so `validate(value, values, t)` gets the translator; `onSubmit` uses `store.context.t`. Field errors from an RPC are stored translated in `<field>Error` leaves.
 - No `useEffect` that writes React state into a store. Reset or prefill in event handlers (the invite dialog calls `invite.reset()` when it opens).
 - Data: `defineList` resolvers query through `core/supabase/client` (RLS applies) with the account id from `store.context`, and return `[]` while it is missing: the context arrives after mount, so nothing is fetched during SSR. Show `list.error` with `LoadError` and `list.reload`.
 - Mutations: a group's `onSubmit` calls one RPC with `supabase.rpc` from the browser. On success it reloads the lists it changed (`store.proxy.members.reload()`), reports with `toast`, and navigates with `store.context.router`; it calls `router.refresh()` when server-rendered data changed (e.g. the caller's own role). Field errors go into `<field>Error` leaves; anything else is `toast.danger(rpcErrorMessage(error))` or a `formError` leaf. The page's server component only checks access.
@@ -63,6 +66,23 @@ Feature state and forms use [palistor](https://www.npmjs.com/package/palistor). 
 - Components: `useForm(store)` once in the root, subtrees (`form.invite`, `form.members`) go down as props, and every component that reads field state calls `useForm(prop)`. List rows are components with their own `useForm(row)`; do not read entity fields inside third-party render callbacks.
 - Empty leaf values are `""` or `false`, not `null` (palistor 0.0.32 reads `null` back as `""`).
 - Store configs have Vitest tests with `@/core/supabase/client` and `@heroui/react` mocked (`core/tenancy/*-store.test.ts`): validation, RPC errors in fields, reset.
+
+## Internationalization (next-intl)
+
+- Source of truth: TypeScript dictionaries in `messages/dictionary/core/` (template) and `messages/dictionary/app/` (product), entries `{ word, tip?, context? }` in ICU syntax. `messages/<locale>.json` and `messages/translations.lock.json` are generated: run `npm run i18n:build` after editing a dictionary, `npm run i18n:translate` (OpenAI, `OPENAI_API_KEY`) for missing or outdated translations, or add them to the locale file by hand and build again. Never edit `en.json`. CI runs `npm run i18n:check`.
+- Locales are listed once, in `core/i18n/config.ts` (`LOCALES`, `DEFAULT_LOCALE`). The request locale is the `NEXT_LOCALE` cookie, else Accept-Language. The switcher (`LocaleSwitcher`) sets the cookie and `profiles.locale`; sign-in syncs the two (`syncProfileLocale`). Emails and other server code that writes for another user pass that user's locale explicitly: `getTranslations({ locale, namespace })`.
+- Keys are typed from `en.json`: `t("Members.title")` is checked by tsc. Components use `useTranslations("Namespace")` / `getTranslations(...)`; code outside components (validators, error mappers, store callbacks) takes a root `t: Translate` (`core/i18n/translate.ts`) and uses full keys.
+- Rich text with tags (`"No account? <link>Sign up</link>"`) goes through `t.rich`; never build a sentence from fragments. Dates and numbers through `useFormatter()` / `getFormatter()` (time zone `TIME_ZONE`).
+- Page titles: `export const generateMetadata = pageMetadata("key")` with the key in `Metadata`. `Metadata` and `Legal` are server-only namespaces (`SERVER_NAMESPACES`), left out of the browser bundle; add to that list any new namespace that only server code reads.
+- Tests use `englishT` from `core/i18n/testing.ts`, so assertions read English.
+
+## Errors and monitoring
+
+- Report unexpected errors with `captureException(error, context)` / `captureMessage` from `@/core/errors`, never from `untracker` directly. Expected outcomes (a wrong password, a taken slug, `not_allowed`) are shown, not reported; `authErrorMessage` and `rpcErrorMessage` report only codes they do not know.
+- Server errors in rendering, Route Handlers, Server Actions and `proxy.ts` are reported by `onRequestError` (`instrumentation.ts`) with the route pattern, never the URL (paths carry tokens). Browser errors: window listeners in `instrumentation-client.ts` and `app/error.tsx` (which skips errors with a `digest`, already reported on the server).
+- Where events go is configured in `core/config/monitoring.ts` (console by default). Every event and error is scrubbed before it reaches the transport (`core/errors/scrub.ts`): secret-looking keys and JWTs. Still, never put passwords, tokens or full URLs into context.
+- Error pages: `app/error.tsx` and `app/not-found.tsx` are translated; `app/global-error.tsx` replaces the root layout and stays minimal English.
+- Tests run with a recording transport (`vitest.setup.ts`); assert with `reported.events` from `core/errors/testing.ts`.
 
 ## Database workflow
 
@@ -80,7 +100,7 @@ Feature state and forms use [palistor](https://www.npmjs.com/package/palistor). 
 - **RPC pattern**: `public.<fn>` is `SECURITY INVOKER` (the API entry point); privileged work lives in `private.<fn>` `SECURITY DEFINER`. No `SECURITY DEFINER` in `public`.
 - Every `SECURITY DEFINER` function has `SET search_path = ''` and schema-qualifies everything (`public.accounts`, `auth.uid()`).
 - Derive the acting user from `auth.uid()` inside the function; never accept a user id or role from the client for authorization.
-- RPC errors raise a stable snake_case key as the message (`RAISE EXCEPTION 'not_allowed' USING ERRCODE = 'insufficient_privilege'`) and list their keys in the function `COMMENT`. Add every new key to `core/tenancy/rpc-errors.ts`; never show `error.message` to users.
+- RPC errors raise a stable snake_case key as the message (`RAISE EXCEPTION 'not_allowed' USING ERRCODE = 'insufficient_privilege'`) and list their keys in the function `COMMENT`. Add every new key to `RPC_ERROR_KEYS` in `core/tenancy/rpc-errors.ts` and its text to the `RpcErrors` dictionary; never show `error.message` to users.
 - Rank rule for membership changes: act only on members strictly below your own role, assign only roles not above it; the owner role moves only through `transfer_ownership()`.
 - Invitations are bound to the invited email: accepting compares it with the caller's confirmed email (`private.my_confirmed_email()`), never trusts the link token alone.
 - `raw_user_meta_data` is client-controlled: only cosmetic profile fields may come from it. Server-assigned data goes into `app_metadata` or explicit RPCs.
@@ -93,7 +113,7 @@ ESLint (`npm run lint`) carries the formatting rules of the donor project: doubl
 
 ## Checks before finishing
 
-`npm run lint && npm run typecheck && npm run test:run`, plus the database checks above when SQL changed.
+`npm run lint && npm run typecheck && npm run i18n:check && npm run test:run`, plus the database checks above when SQL changed. CI (`.github/workflows/ci.yml`) runs the same, plus `next build`, the migration drift check and the generated-types check.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

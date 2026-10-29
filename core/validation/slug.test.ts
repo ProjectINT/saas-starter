@@ -1,19 +1,21 @@
 import { describe, expect, it } from "vitest";
 
+import { englishT } from "@/core/i18n/testing";
+
 import { slugify, validateSlug } from "./slug";
 
 describe("validateSlug", () => {
   it("accepts valid slugs", () => {
-    ["acme", "a1b", "acme-inc", "x".repeat(48)].forEach((slug) => expect(validateSlug(slug)).toBeNull());
+    ["acme", "a1b", "acme-inc", "x".repeat(48)].forEach((slug) => expect(validateSlug(slug, englishT)).toBeNull());
   });
 
   it("enforces the length", () => {
-    expect(validateSlug("ab")).toMatch(/at least 3/);
-    expect(validateSlug("x".repeat(49))).toMatch(/at most 48/);
+    expect(validateSlug("ab", englishT)).toMatch(/at least 3/);
+    expect(validateSlug("x".repeat(49), englishT)).toMatch(/at most 48/);
   });
 
   it("enforces the format", () => {
-    ["Acme", "-acme", "acme-", "ac me", "acme_inc", "акме"].forEach((slug) => expect(validateSlug(slug)).toMatch(/lowercase/));
+    ["Acme", "-acme", "acme-", "ac me", "acme_inc", "акме"].forEach((slug) => expect(validateSlug(slug, englishT)).toMatch(/lowercase/));
   });
 });
 
@@ -41,6 +43,6 @@ describe("slugify", () => {
     const slug = slugify(`${"word ".repeat(20)}end`);
 
     expect(slug.length).toBeLessThanOrEqual(48);
-    expect(validateSlug(slug)).toBeNull();
+    expect(validateSlug(slug, englishT)).toBeNull();
   });
 });

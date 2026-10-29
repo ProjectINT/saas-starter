@@ -2,14 +2,11 @@ import { Constants, type Database } from "@/core/db/database.types";
 
 export type AccountRole = Database["public"]["Enums"]["account_role"];
 
-/** All roles in privilege order, most privileged first (the enum declaration order). */
+/**
+ * All roles in privilege order, most privileged first (the enum declaration
+ * order). Their names are in the Roles namespace: t(`Roles.${role}`).
+ */
 export const ACCOUNT_ROLES: readonly AccountRole[] = Constants.public.Enums.account_role;
-
-export const ROLE_LABELS: Record<AccountRole, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  member: "Member",
-};
 
 const rank = (role: AccountRole) => ACCOUNT_ROLES.indexOf(role);
 

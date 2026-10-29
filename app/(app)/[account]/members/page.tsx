@@ -1,11 +1,10 @@
-import type { Metadata } from "next";
-
 import { notFound } from "next/navigation";
 
+import { pageMetadata } from "@/core/i18n/metadata";
 import { can, getAccountContext } from "@/core/tenancy/accounts";
 import { MembersView } from "@/core/tenancy/components/members-view";
 
-export const metadata: Metadata = { title: "Members" };
+export const generateMetadata = pageMetadata("members");
 
 type Props = { params: Promise<{ account: string }> };
 

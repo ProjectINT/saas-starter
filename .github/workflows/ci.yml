@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    env:
+      # `next build` checks the env contract (core/config/env.ts) but fetches
+      # nothing from Supabase, so placeholders are enough here.
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54421
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+      SUPABASE_SECRET_KEY: ci-placeholder
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      # messages/*.json match the dictionaries and every locale is complete.
+      - run: npm run i18n:check
+      - run: npm run test:run
+      - run: npm run build
+
+  db:
+    name: Database (lint, pgTAP, drift)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      # Applies supabase/migrations and seed.sql. Services the checks do not
+      # use stay off to save start-up time.
+      - name: Start local Supabase
+        run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime
+
+      # Errors only: the no-op app hook (50_app/00_hooks.sql) has an unused
+      # parameter by design.
+      - name: Lint SQL (plpgsql_check)
+        run: npm run db:lint -- --fail-on error
+
+      - name: pgTAP
+        run: npm run db:test
+
+      - name: Migrations match supabase/schemas
+        run: |
+          npm run db:migration -- ci_drift_check
+          if [ -n "$(git status --porcelain -- supabase/migrations)" ]; then
+            echo "::error::supabase/schemas differ from supabase/migrations. Run \`npm run db:migration -- <name>\`, review and commit the migration."
+            cat supabase/migrations/*_ci_drift_check.sql
+            exit 1
+          fi
+
+      - name: Generated types are up to date
+        run: |
+          npm run db:types
+          if ! git diff --exit-code -- core/db/database.types.ts core/tenancy/permissions.generated.ts; then
+            echo "::error::Generated types are stale. Run \`npm run db:types\` and commit the result."
+            exit 1
+          fi

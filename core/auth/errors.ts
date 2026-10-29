@@ -1,30 +1,38 @@
-import { PASSWORD_HINT } from "@/core/validation/password";
+import type { Messages } from "next-intl";
+
+import type { Translate } from "@/core/i18n/translate";
+import { captureException } from "@/core/errors";
+import { PASSWORD_MIN_LENGTH } from "@/core/validation/password";
+
+type AuthErrorKey = keyof Messages["Auth"]["errors"];
 
 /**
- * User-facing messages for Supabase Auth error codes
- * (https://supabase.com/docs/guides/auth/debugging/error-codes).
- * Keyed by code so the i18n phase can swap the strings for translations.
+ * Supabase Auth error codes with a message of their own in Auth.errors
+ * (https://supabase.com/docs/guides/auth/debugging/error-codes). Other codes
+ * get a generic message: server texts are never shown.
  */
-const MESSAGES: Record<string, string> = {
-  invalid_credentials: "Invalid email or password.",
-  email_not_confirmed: "Confirm your email address first.",
-  user_already_exists: "An account with this email already exists.",
-  email_exists: "An account with this email already exists.",
-  weak_password: `This password is too weak. ${PASSWORD_HINT}`,
-  same_password: "The new password must be different from the current one.",
-  email_address_invalid: "This email address cannot be used.",
-  signup_disabled: "Sign-ups are currently disabled.",
-  user_banned: "This account is blocked. Contact support.",
-  captcha_failed: "The captcha check failed. Try again.",
-  over_request_rate_limit: "Too many attempts. Wait a few minutes and try again.",
-  over_email_send_rate_limit: "Too many emails sent. Wait a few minutes and try again.",
-  session_expired: "Your session has expired. Sign in again.",
-  session_not_found: "Your session has expired. Sign in again.",
-  reauthentication_needed: "Sign in again to change your password.",
+const CODES = [
+  "invalid_credentials",
+  "email_not_confirmed",
+  "user_already_exists",
+  "weak_password",
+  "same_password",
+  "email_address_invalid",
+  "signup_disabled",
+  "user_banned",
+  "captcha_failed",
+  "over_request_rate_limit",
+  "over_email_send_rate_limit",
+  "session_expired",
+  "reauthentication_needed",
+] as const satisfies readonly AuthErrorKey[];
+
+const ALIASES: Record<string, AuthErrorKey> = {
+  email_exists: "user_already_exists",
+  session_not_found: "session_expired",
 };
 
-const NETWORK_ERROR = "Cannot reach the server. Check your connection and try again.";
-const UNKNOWN_ERROR = "Something went wrong. Try again.";
+const isCode = (code: string): code is (typeof CODES)[number] => (CODES as readonly string[]).includes(code);
 
 interface AuthErrorLike {
   code?: string;
@@ -32,19 +40,30 @@ interface AuthErrorLike {
   name?: string;
 }
 
-export function authErrorMessage(error: AuthErrorLike) {
-  if (error.code && MESSAGES[error.code]) {
-    return MESSAGES[error.code];
+export function authErrorKey(error: AuthErrorLike): AuthErrorKey {
+  if (error.code && (isCode(error.code) || Object.hasOwn(ALIASES, error.code))) {
+    return isCode(error.code) ? error.code : ALIASES[error.code];
   }
 
   if (error.status === 429) {
-    return MESSAGES.over_request_rate_limit;
+    return "over_request_rate_limit";
   }
 
   // supabase-js reports fetch failures as AuthRetryableFetchError (status 0).
   if (error.name === "AuthRetryableFetchError") {
-    return NETWORK_ERROR;
+    return "network";
   }
 
-  return UNKNOWN_ERROR;
+  return "unknown";
+}
+
+/** The text for a Supabase Auth error. Unknown errors are reported and get a generic text. */
+export function authErrorMessage(error: AuthErrorLike, t: Translate) {
+  const key = authErrorKey(error);
+
+  if (key === "unknown") {
+    captureException(error, { source: "auth" });
+  }
+
+  return t(`Auth.errors.${key}`, { min: PASSWORD_MIN_LENGTH });
 }

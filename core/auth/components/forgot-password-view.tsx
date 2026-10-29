@@ -2,6 +2,7 @@
 
 import { Envelope } from "@gravity-ui/icons";
 import { Button, Form } from "@heroui/react";
+import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 
 import { useCaptcha } from "@/core/auth/captcha";
@@ -21,6 +22,7 @@ import { EmailField } from "./email-field";
  * the email is registered.
  */
 export function ForgotPasswordView() {
+  const t = useTranslations();
   const captcha = useCaptcha();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export function ForgotPasswordView() {
     setIsPending(false);
 
     if (error) {
-      setError(authErrorMessage(error));
+      setError(authErrorMessage(error, t));
 
       return;
     }
@@ -59,20 +61,15 @@ export function ForgotPasswordView() {
           <Envelope className="size-6" />
         </div>
         <AuthHeading
-          description={(
-            <>
-              If an account exists for <strong>{sentTo}</strong>, we sent it a link to set a new password. The link expires in an
-              hour.
-            </>
-          )}
-          title="Check your email"
+          description={t.rich("Auth.forgotPassword.sent", { email: sentTo, strong: (chunks) => <strong>{chunks}</strong> })}
+          title={t("Auth.forgotPassword.sentTitle")}
         />
         <ButtonLink
           fullWidth
           href={routes.signIn}
           variant="secondary"
         >
-          Back to sign in
+          {t("Common.backToSignIn")}
         </ButtonLink>
       </>
     );
@@ -81,8 +78,8 @@ export function ForgotPasswordView() {
   return (
     <>
       <AuthHeading
-        description="Enter your email and we will send you a link to set a new password."
-        title="Forgot your password?"
+        description={t("Auth.forgotPassword.description")}
+        title={t("Auth.forgotPassword.title")}
       />
       <Form
         className="flex flex-col gap-4"
@@ -97,11 +94,11 @@ export function ForgotPasswordView() {
           isPending={isPending}
           type="submit"
         >
-          Send reset link
+          {t("Auth.forgotPassword.submit")}
         </Button>
       </Form>
       <p className="text-center text-sm text-muted">
-        Remembered it? <AppLink href={routes.signIn}>Back to sign in</AppLink>
+        {t.rich("Auth.forgotPassword.remembered", { link: (chunks) => <AppLink href={routes.signIn}>{chunks}</AppLink> })}
       </p>
     </>
   );

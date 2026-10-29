@@ -1,8 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 
 import { Button, Checkbox, FieldError, Form } from "@heroui/react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 
 import type { OAuthProvider } from "@/core/auth/oauth";
@@ -13,7 +15,7 @@ import { routes } from "@/core/config/routes";
 import { createClient } from "@/core/supabase/client";
 import { AppLink } from "@/core/ui/links";
 import { Notice } from "@/core/ui/notice";
-import { PASSWORD_HINT, validatePassword } from "@/core/validation/password";
+import { passwordHint, validatePassword } from "@/core/validation/password";
 
 import { AuthHeading } from "./auth-heading";
 import { CheckEmail } from "./check-email";
@@ -34,6 +36,8 @@ interface SignUpViewProps {
  * always ends on "check your email".
  */
 export function SignUpView({ next, providers }: SignUpViewProps) {
+  const t = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const captcha = useCaptcha();
   const [password, setPassword] = useState("");
@@ -52,15 +56,20 @@ export function SignUpView({ next, providers }: SignUpViewProps) {
     const { data, error } = await createClient().auth.signUp({
       email,
       password,
-      // emailRedirectTo serves the default Supabase email template; the
-      // template in supabase/templates links to /auth/confirm instead.
-      options: { emailRedirectTo: authCallbackUrl(), captchaToken: captcha.token },
+      options: {
+        // emailRedirectTo serves the default Supabase email template; the
+        // template in supabase/templates links to /auth/confirm instead.
+        emailRedirectTo: authCallbackUrl(),
+        captchaToken: captcha.token,
+        // Cosmetic: the profile trigger copies it into profiles.locale.
+        data: { locale },
+      },
     });
 
     captcha.reset();
 
     if (error) {
-      setError(authErrorMessage(error));
+      setError(authErrorMessage(error, t));
       setIsPending(false);
 
       return;
@@ -82,18 +91,30 @@ export function SignUpView({ next, providers }: SignUpViewProps) {
     return (
       <CheckEmail
         email={sentTo}
-        title="Check your email"
+        title={t("Auth.signUp.sentTitle")}
       >
-        We sent a confirmation link to <strong>{sentTo}</strong>. Open it to finish signing up.
+        {t.rich("Auth.signUp.sent", { email: sentTo, strong: (chunks) => <strong>{chunks}</strong> })}
       </CheckEmail>
     );
   }
 
+  const legalLink = (href: string) => function LegalLink(chunks: ReactNode) {
+    return (
+      <AppLink
+        className="underline"
+        href={href}
+        target="_blank"
+      >
+        {chunks}
+      </AppLink>
+    );
+  };
+
   return (
     <>
       <AuthHeading
-        description="Sign up to get started. It takes a minute."
-        title="Create your account"
+        description={t("Auth.signUp.description")}
+        title={t("Auth.signUp.title")}
       />
       <SocialButtons
         next={next}
@@ -107,18 +128,18 @@ export function SignUpView({ next, providers }: SignUpViewProps) {
         <EmailField autoFocus />
         <PasswordField
           autoComplete="new-password"
-          description={PASSWORD_HINT}
-          label="Password"
+          description={passwordHint(t)}
+          label={t("Auth.password")}
           name="password"
-          validate={validatePassword}
+          validate={(value) => validatePassword(value, t)}
           value={password}
           onChange={setPassword}
         />
         <PasswordField
           autoComplete="new-password"
-          label="Confirm password"
+          label={t("Auth.confirmPassword")}
           name="confirmPassword"
-          validate={(value) => (value === password ? null : "Passwords do not match.")}
+          validate={(value) => (value === password ? null : t("Validation.passwordMismatch"))}
         />
         <Checkbox
           isRequired
@@ -129,22 +150,7 @@ export function SignUpView({ next, providers }: SignUpViewProps) {
               <Checkbox.Indicator />
             </Checkbox.Control>
             <span className="text-sm">
-              I agree to the{" "}
-              <AppLink
-                className="underline"
-                href={routes.termsOfUse}
-                target="_blank"
-              >
-                Terms of Use
-              </AppLink>{" "}
-              and{" "}
-              <AppLink
-                className="underline"
-                href={routes.privacyPolicy}
-                target="_blank"
-              >
-                Privacy Policy
-              </AppLink>
+              {t.rich("Auth.signUp.terms", { terms: legalLink(routes.termsOfUse), privacy: legalLink(routes.privacyPolicy) })}
             </span>
           </Checkbox.Content>
           <FieldError />
@@ -156,11 +162,11 @@ export function SignUpView({ next, providers }: SignUpViewProps) {
           isPending={isPending}
           type="submit"
         >
-          Create account
+          {t("Auth.signUp.submit")}
         </Button>
       </Form>
       <p className="text-center text-sm text-muted">
-        Already have an account? <AppLink href={withNext(routes.signIn, next)}>Sign in</AppLink>
+        {t.rich("Auth.signUp.haveAccount", { link: (chunks) => <AppLink href={withNext(routes.signIn, next)}>{chunks}</AppLink> })}
       </p>
     </>
   );

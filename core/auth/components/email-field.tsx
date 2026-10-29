@@ -1,8 +1,11 @@
 "use client";
 
 import { FieldError, Input, Label, TextField } from "@heroui/react";
+import { useTranslations } from "next-intl";
 
 export function EmailField({ autoFocus, defaultValue }: { autoFocus?: boolean; defaultValue?: string }) {
+  const t = useTranslations();
+
   return (
     <TextField
       isRequired
@@ -11,10 +14,10 @@ export function EmailField({ autoFocus, defaultValue }: { autoFocus?: boolean; d
       name="email"
       type="email"
     >
-      <Label>Email</Label>
+      <Label>{t("Common.email")}</Label>
       <Input
         autoComplete="email"
-        placeholder="you@example.com"
+        placeholder={t("Auth.emailPlaceholder")}
       />
       <FieldError />
     </TextField>

@@ -4,13 +4,16 @@ import type { AuthError } from "@supabase/supabase-js";
 
 import { Button, Form } from "@heroui/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 
+import { captureException } from "@/core/errors";
 import type { OAuthProvider } from "@/core/auth/oauth";
 import { useCaptcha } from "@/core/auth/captcha";
 import { authErrorMessage } from "@/core/auth/errors";
 import { withNext } from "@/core/auth/redirect";
 import { routes } from "@/core/config/routes";
+import { syncLocaleAfterSignIn } from "@/core/i18n/actions";
 import { createClient } from "@/core/supabase/client";
 import { AppLink } from "@/core/ui/links";
 import { Notice } from "@/core/ui/notice";
@@ -29,6 +32,7 @@ interface SignInViewProps {
 
 /** Sign-in screen: OAuth buttons and email + password. */
 export function SignInView({ next, providers }: SignInViewProps) {
+  const t = useTranslations();
   const router = useRouter();
   const captcha = useCaptcha();
   const [isPending, setIsPending] = useState(false);
@@ -59,6 +63,8 @@ export function SignInView({ next, providers }: SignInViewProps) {
       return;
     }
 
+    // The profile's language becomes this device's, before the next page renders.
+    await syncLocaleAfterSignIn().catch((syncError: unknown) => captureException(syncError, { action: "syncLocaleAfterSignIn" }));
     // Stay pending until the next page renders; refresh drops RSC payloads cached while signed out.
     router.replace(next);
     router.refresh();
@@ -68,10 +74,10 @@ export function SignInView({ next, providers }: SignInViewProps) {
     return (
       <CheckEmail
         email={email}
-        title="Confirm your email"
+        title={t("Auth.signIn.notConfirmedTitle")}
         onBack={() => setError(null)}
       >
-        Your email address is not confirmed yet. Open the link we sent to <strong>{email}</strong>, or request a new one.
+        {t.rich("Auth.signIn.notConfirmed", { email, strong: (chunks) => <strong>{chunks}</strong> })}
       </CheckEmail>
     );
   }
@@ -79,8 +85,8 @@ export function SignInView({ next, providers }: SignInViewProps) {
   return (
     <>
       <AuthHeading
-        description="Sign in to your account to continue."
-        title="Welcome back"
+        description={t("Auth.signIn.description")}
+        title={t("Auth.signIn.title")}
       />
       <SocialButtons
         next={next}
@@ -90,7 +96,7 @@ export function SignInView({ next, providers }: SignInViewProps) {
         className="flex flex-col gap-4"
         onSubmit={handleSubmit}
       >
-        {error && <Notice>{authErrorMessage(error)}</Notice>}
+        {error && <Notice>{authErrorMessage(error, t)}</Notice>}
         <EmailField
           autoFocus
           defaultValue={email}
@@ -98,14 +104,14 @@ export function SignInView({ next, providers }: SignInViewProps) {
         <div className="flex flex-col gap-2">
           <PasswordField
             autoComplete="current-password"
-            label="Password"
+            label={t("Auth.password")}
             name="password"
           />
           <AppLink
             className="self-end text-sm"
             href={routes.forgotPassword}
           >
-            Forgot password?
+            {t("Auth.signIn.forgotPassword")}
           </AppLink>
         </div>
         {captcha.widget}
@@ -115,11 +121,11 @@ export function SignInView({ next, providers }: SignInViewProps) {
           isPending={isPending}
           type="submit"
         >
-          Sign in
+          {t("Auth.signIn.submit")}
         </Button>
       </Form>
       <p className="text-center text-sm text-muted">
-        No account yet? <AppLink href={withNext(routes.signUp, next)}>Sign up</AppLink>
+        {t.rich("Auth.signIn.noAccount", { link: (chunks) => <AppLink href={withNext(routes.signUp, next)}>{chunks}</AppLink> })}
       </p>
     </>
   );
