@@ -3,7 +3,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
-SELECT plan(12);
+SELECT plan(13);
 
 SELECT is_empty(
   $$
@@ -63,12 +63,34 @@ SELECT results_eq(
   $$,
   $$
     VALUES
+      ('private.accept_invitation'),
       ('private.can_view_profile'),
+      ('private.change_member_role'),
       ('private.create_account'),
+      ('private.create_invitation'),
+      ('private.decline_invitation'),
+      ('private.delete_account'),
+      ('private.get_invitation'),
       ('private.has_permission'),
       ('private.is_account_member'),
       ('private.is_platform_admin'),
-      ('public.create_account')
+      ('private.leave_account'),
+      ('private.list_my_invitations'),
+      ('private.remove_member'),
+      ('private.revoke_invitation'),
+      ('private.transfer_ownership'),
+      ('public.accept_invitation'),
+      ('public.change_member_role'),
+      ('public.create_account'),
+      ('public.create_invitation'),
+      ('public.decline_invitation'),
+      ('public.delete_account'),
+      ('public.get_invitation'),
+      ('public.leave_account'),
+      ('public.list_my_invitations'),
+      ('public.remove_member'),
+      ('public.revoke_invitation'),
+      ('public.transfer_ownership')
   $$,
   'authenticated can execute only whitelisted functions'
 );
@@ -120,6 +142,12 @@ SELECT ok(
   AND NOT has_column_privilege('authenticated', 'public.profiles', 'email', 'UPDATE')
   AND NOT has_column_privilege('authenticated', 'public.profiles', 'id', 'UPDATE'),
   'authenticated cannot create/delete profiles or change id/email'
+);
+
+SELECT ok(
+  NOT has_table_privilege('authenticated', 'public.account_invitations', 'INSERT, UPDATE, DELETE, TRUNCATE')
+  AND NOT has_column_privilege('authenticated', 'public.account_invitations', 'token_hash', 'SELECT'),
+  'authenticated cannot write invitations or read token hashes'
 );
 
 SELECT ok(

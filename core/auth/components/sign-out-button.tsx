@@ -14,7 +14,11 @@ import { createClient } from "@/core/supabase/client";
  * Supabase client). Persistent client caches (IndexedDB, localStorage) must be
  * cleared here before the reload once they exist.
  */
-export function SignOutButton() {
+export function SignOutButton({ redirectTo = routes.signIn, variant = "ghost" }: {
+  /** Where to land after signing out, e.g. sign-in with a `next` to come back. */
+  redirectTo?: string;
+  variant?: "ghost" | "secondary";
+}) {
   const [isPending, setIsPending] = useState(false);
 
   async function signOut() {
@@ -30,14 +34,14 @@ export function SignOutButton() {
       return;
     }
 
-    window.location.assign(routes.signIn);
+    window.location.assign(redirectTo);
   }
 
   return (
     <Button
       isPending={isPending}
       size="sm"
-      variant="ghost"
+      variant={variant}
       onPress={signOut}
     >
       <ArrowRightFromSquare className="size-4" />

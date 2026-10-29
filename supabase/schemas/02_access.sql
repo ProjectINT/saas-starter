@@ -74,6 +74,29 @@ $$;
 COMMENT ON FUNCTION private.has_permission(uuid, text) IS
 'True if the current user''s role in the active account grants the permission (see public.role_permissions). The single source of truth for RLS and RPC checks.';
 
+-- Not granted to clients: RPC internals use it to compare roles
+-- (`v_target_role > v_my_role` = target is less privileged).
+CREATE OR REPLACE FUNCTION private.member_role(p_account_id uuid)
+RETURNS public.account_role
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN (
+    SELECT m.role
+    FROM public.account_members m
+    JOIN public.accounts a ON a.id = m.account_id
+    WHERE m.account_id = p_account_id
+      AND m.user_id = (SELECT auth.uid())
+      AND a.deactivated_at IS NULL
+  );
+END;
+$$;
+
+COMMENT ON FUNCTION private.member_role(uuid) IS 'Role of the current user in the active account, or NULL. For RPC internals; not granted to clients.';
+
 CREATE OR REPLACE FUNCTION private.can_view_profile(p_user_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql

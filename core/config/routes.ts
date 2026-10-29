@@ -14,8 +14,13 @@ export const routes = {
   authError: "/auth/error",
   accounts: "/accounts",
   onboarding: "/onboarding",
+  invite: "/invite",
   privacyPolicy: "/privacy-policy",
   termsOfUse: "/terms-of-use",
 } as const;
 
 export const accountPath = (slug: string) => `/${slug}`;
+
+export const accountMembersPath = (slug: string) => `/${slug}/members`;
+
+export const invitePath = (token: string) => `${routes.invite}/${token}`;

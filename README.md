@@ -2,7 +2,7 @@
 
 Multi-tenant SaaS template: Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + HeroUI v3.
 
-Status: **phase 2**: users, accounts, memberships and roles in the database; sign-up, sign-in (password, Google), email confirmation, password reset, sign-out, account selection and onboarding in the app. See [docs/ROADMAP.md](docs/ROADMAP.md).
+Status: **phase 3**: users, accounts, roles and permissions in the database; sign-up, sign-in (password, Google), email confirmation, password reset, sign-out, onboarding; account switcher, members page, invitations, role changes, removal, leaving, ownership transfer. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Quick start
 
@@ -21,6 +21,8 @@ Seeded local users (password `password123`): `alice@example.com` (owner of `acme
 
 Emails sent locally (confirmation, password reset) land in Mailpit: http://127.0.0.1:54424.
 
+Invitations are not emailed yet (phase 5): the inviter copies the link from the dialog. Only a user whose confirmed email matches the invitation can accept it; pending invitations also show up on `/accounts` after sign-in.
+
 ## Auth flows
 
 | Flow | Path |
@@ -29,7 +31,8 @@ Emails sent locally (confirmation, password reset) land in Mailpit: http://127.0
 | Sign up | `/sign-up` → email link → `/auth/confirm` → `/accounts` → `/onboarding` |
 | Password reset | `/forgot-password` → email link → `/auth/confirm` → `/reset-password` |
 | OAuth (Google, GitHub) | provider → `/auth/callback` → `/accounts` (or `?next=`) |
-| After sign-in | `/accounts`: no accounts → `/onboarding`, one → `/[slug]`, several → list |
+| After sign-in | `/accounts`: pending invitations → list them; else no accounts → `/onboarding`, last opened or only account → `/[slug]`, several → list |
+| Invitation | `/[slug]/members` → Invite → link `/invite/<token>` → (sign in / sign up) → Accept → `/[slug]` |
 
 `proxy.ts` sends signed-out visitors of any non-public page to `/sign-in?next=…` and answers `401` on `/api/*`. Public routes are listed in [core/auth/public-routes.ts](core/auth/public-routes.ts).
 
@@ -66,7 +69,7 @@ Test keys that always pass are listed in [.env.example](.env.example).
 | `db:migration -- <name>` | Generate a migration from `supabase/schemas` (pg-delta) |
 | `db:test` | pgTAP tests in `supabase/tests` |
 | `db:lint` | plpgsql_check on `public` and `private` |
-| `db:types` | Regenerate `core/db/database.types.ts` |
+| `db:types` | Regenerate `core/db/database.types.ts` and the permission names in `core/tenancy/permissions.generated.ts` |
 | `env:local` | Write `.env.local` for the local stack |
 
 ## Layout
@@ -74,12 +77,12 @@ Test keys that always pass are listed in [.env.example](.env.example).
 ```
 app/
   (auth)/            sign-in, sign-up, forgot/reset password, auth/callback, auth/confirm, auth/error
-  (onboarding)/      accounts (picker), onboarding (create an account)
+  (onboarding)/      accounts (picker + pending invitations), onboarding (create an account), invite/[token]
   (legal)/           terms-of-use, privacy-policy (placeholders)
-  (app)/[account]/   tenant pages (placeholder home for now)
+  (app)/[account]/   tenant pages: layout (switcher, nav, AccountProvider), home (placeholder), members
 core/                template core
   auth/              public routes, safe redirects, session helpers, captcha, OAuth providers, auth screens
-  tenancy/           account queries, create-account action and form
+  tenancy/           accounts, roles and permissions (`can`, `useAccount`), members and invitations: queries, Server Actions, UI
   ui/                providers (theme, router, toasts), theme switch, logo, Next.js links styled as HeroUI
   validation/        password and slug rules shared by forms and server code
   config/            env contract (zod), site name, route paths
@@ -101,9 +104,20 @@ supabase/
 | `profiles` | One row per auth user, created by a trigger. Email synced from `auth.users`. |
 | `accounts` | Tenants. `slug` is the URL identifier (reserved route names are rejected). |
 | `account_members` | User ↔ account with a role (`owner`, `admin`, `member`). Read-only for clients. |
+| `account_invitations` | Invitations by email with a role; stores only the hash of the link token. Written by RPCs only. |
 | `role_permissions` | The permission matrix; the only place role rules live. |
 | `private.platform_admins` | Platform (super) admins. Not reachable through the API. |
 
-RPC: `create_account(p_name, p_slug)` creates an account owned by the caller.
+RPC (all derive the caller from the session and check permissions themselves):
+
+| Function | Who |
+|---|---|
+| `create_account(name, slug)` | any signed-in user |
+| `create_invitation(account, email, role)` → link token, `revoke_invitation(id)` | `members.invite`; role not above the caller's |
+| `get_invitation(token)`, `list_my_invitations()`, `accept_invitation(id)`, `decline_invitation(id)` | the invitee (confirmed email must match) |
+| `change_member_role(account, user, role)`, `remove_member(account, user)` | `members.manage`; only members below the caller's role |
+| `leave_account(account)` | any member except the owner |
+| `transfer_ownership(account, user)` | the owner; becomes admin |
+| `delete_account(account)` | `account.delete` (owner) |
 
 Security model in short: nothing is reachable through the Data API without an explicit `GRANT`; RLS on every table; access checks go through `private.has_permission(account_id, permission)`; `user_metadata` never grants anything. Details and rules for changes: [AGENTS.md](AGENTS.md).

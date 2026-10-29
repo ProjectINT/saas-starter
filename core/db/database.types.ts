@@ -5,7 +5,45 @@ export type Database = {
   
   "public": {
           Tables: {
-            "account_members": {
+            "account_invitations": {
+                  Row: {
+                    "accepted_at": string | null,"accepted_by": string | null,"account_id": string,"created_at": string,"declined_at": string | null,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"revoked_at": string | null,"revoked_by": string | null,"role": Database["public"]['Enums']["account_role"],"token_hash": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accepted_at"?: string | null,"accepted_by"?: string | null,"account_id": string,"created_at"?: string,"declined_at"?: string | null,"email": string,"expires_at": string,"id"?: string,"invited_by"?: string | null,"revoked_at"?: string | null,"revoked_by"?: string | null,"role": Database["public"]['Enums']["account_role"],"token_hash": string
+                  }
+                  Update: {
+                    "accepted_at"?: string | null,"accepted_by"?: string | null,"account_id"?: string,"created_at"?: string,"declined_at"?: string | null,"email"?: string,"expires_at"?: string,"id"?: string,"invited_by"?: string | null,"revoked_at"?: string | null,"revoked_by"?: string | null,"role"?: Database["public"]['Enums']["account_role"],"token_hash"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "account_invitations_accepted_by_fkey"
+      columns: ["accepted_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "account_invitations_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "account_invitations_invited_by_fkey"
+      columns: ["invited_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "account_invitations_revoked_by_fkey"
+      columns: ["revoked_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"account_members": {
                   Row: {
                     "account_id": string,"created_at": string,"invited_by": string | null,"role": Database["public"]['Enums']["account_role"],"updated_at": string,"user_id": string
                   }
@@ -91,7 +129,27 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "create_account":
+            "accept_invitation":
+{ Args: { "p_invitation_id": string }; Returns: {
+              "created_at": string,
+"deactivated_at": string | null,
+"id": string,
+"logo_path": string | null,
+"name": string,
+"owner_id": string,
+"slug": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "accounts"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"change_member_role":
+{ Args: { "p_account_id": string,"p_role": Database["public"]['Enums']["account_role"],"p_user_id": string }; Returns: undefined
+                           },
+"create_account":
 { Args: { "p_name": string,"p_slug": string }; Returns: {
               "created_at": string,
 "deactivated_at": string | null,
@@ -107,7 +165,38 @@ isOneToOne: false
         to: "accounts"
         isOneToOne: true
         isSetofReturn: false
-      } }
+      } },
+"create_invitation":
+{ Args: { "p_account_id": string,"p_email": string,"p_role": Database["public"]['Enums']["account_role"] }; Returns: string
+                           },
+"decline_invitation":
+{ Args: { "p_invitation_id": string }; Returns: undefined
+                           },
+"delete_account":
+{ Args: { "p_account_id": string }; Returns: undefined
+                           },
+"get_invitation":
+{ Args: { "p_token": string }; Returns: {
+              "account_name": string,"email": string,"expires_at": string,"id": string,"inviter_name": string,"role": Database["public"]['Enums']["account_role"],"status": string
+            }[]
+                           },
+"leave_account":
+{ Args: { "p_account_id": string }; Returns: undefined
+                           },
+"list_my_invitations":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "account_name": string,"expires_at": string,"id": string,"inviter_name": string,"role": Database["public"]['Enums']["account_role"]
+            }[]
+                           },
+"remove_member":
+{ Args: { "p_account_id": string,"p_user_id": string }; Returns: undefined
+                           },
+"revoke_invitation":
+{ Args: { "p_invitation_id": string }; Returns: undefined
+                           },
+"transfer_ownership":
+{ Args: { "p_account_id": string,"p_new_owner_id": string }; Returns: undefined
+                           }
           }
           Enums: {
             "account_role": "owner"|"admin"|"member"

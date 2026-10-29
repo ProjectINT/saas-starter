@@ -32,6 +32,14 @@ Identify the user on the server with `supabase.auth.getClaims()`, not `getSessio
 - Sign-in, sign-up, password reset and resend run in the browser through `core/supabase/client` and pass `captcha.token` from `useCaptcha()`; reset the captcha after each call. Do not proxy them through API routes: Supabase Auth verifies the captcha and rate-limits per user IP.
 - Show Supabase Auth errors with `authErrorMessage(error)` (by error code), never `error.message`.
 
+## Tenancy
+
+- Tenant pages live under `app/(app)/[account]/`. The layout resolves the account with `getAccountContext(slug)` (404 for non-members) and wraps the tree in `AccountProvider`; pages call `getAccountContext` again (cached) and check their own permission with `can(context, "area.action")`.
+- Client components read the account, role and permissions with `useAccount()` and hide controls with `useAccount().can(...)`. That is a UI hint only: the RPC or RLS policy is the guard.
+- Permission names are the generated union `Permission` (`core/tenancy/permissions.generated.ts`, written by `npm run db:types` from `public.role_permissions`). Which role holds which permission is read at runtime, never written in TS.
+- Role order comes from `ACCOUNT_ROLES` (enum order); compare with `outranks()`, offer roles with `assignableRoles()`. Both mirror the SQL rank rule; keep them in sync with `31_members.sql` / `32_invitations.sql`.
+- Mutations go through Server Actions that call one RPC and return `null` or a message from `rpcErrorMessage(error)`; on success they call `refresh()` (or `redirect()`). Arguments of Server Actions are untrusted input.
+
 ## UI
 
 - HeroUI v3 (`@heroui/react`): compound components (`Card.Header`, `Checkbox.Control`), no provider. Root providers are in `core/ui/providers.tsx` (next-themes, `RouterProvider`, `Toast.Provider`); toasts via `toast.success()` / `toast.danger()`.
@@ -56,6 +64,9 @@ Identify the user on the server with `supabase.auth.getClaims()`, not `getSessio
 - **RPC pattern**: `public.<fn>` is `SECURITY INVOKER` (the API entry point); privileged work lives in `private.<fn>` `SECURITY DEFINER`. No `SECURITY DEFINER` in `public`.
 - Every `SECURITY DEFINER` function has `SET search_path = ''` and schema-qualifies everything (`public.accounts`, `auth.uid()`).
 - Derive the acting user from `auth.uid()` inside the function; never accept a user id or role from the client for authorization.
+- RPC errors raise a stable snake_case key as the message (`RAISE EXCEPTION 'not_allowed' USING ERRCODE = 'insufficient_privilege'`) and list their keys in the function `COMMENT`. Add every new key to `core/tenancy/rpc-errors.ts`; never show `error.message` to users.
+- Rank rule for membership changes: act only on members strictly below your own role, assign only roles not above it; the owner role moves only through `transfer_ownership()`.
+- Invitations are bound to the invited email: accepting compares it with the caller's confirmed email (`private.my_confirmed_email()`), never trusts the link token alone.
 - `raw_user_meta_data` is client-controlled: only cosmetic profile fields may come from it. Server-assigned data goes into `app_metadata` or explicit RPCs.
 - Views are `security_invoker = true`.
 - `supabase/tests/database/01_privileges.test.sql` holds the whitelist of functions callable by `authenticated`. Adding a client-callable function means extending it in the same change; anything else failing there is a bug.

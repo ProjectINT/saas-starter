@@ -20,7 +20,7 @@
     "db:test": "supabase test db",
     "db:lint": "supabase db lint --level warning --schema public,private",
     "db:migration": "supabase db schema declarative sync --no-apply --name",
-    "db:types": "supabase gen types typescript --local --schema public > core/db/database.types.ts",
+    "db:types": "supabase gen types typescript --local --schema public > core/db/database.types.ts && node scripts/gen-permissions.mjs",
     "env:local": "node scripts/env-local.mjs"
   },
   "dependencies": {

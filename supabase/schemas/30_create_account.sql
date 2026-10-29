@@ -16,7 +16,7 @@ DECLARE
   v_account public.accounts;
 BEGIN
   IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated' USING ERRCODE = 'insufficient_privilege';
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = 'insufficient_privilege';
   END IF;
 
   INSERT INTO public.accounts (name, slug, owner_id)
