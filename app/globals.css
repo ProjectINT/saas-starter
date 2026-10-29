@@ -1,1 +1,3 @@
+/* Order matters: Tailwind first, then the HeroUI theme and components. */
 @import "tailwindcss";
+@import "@heroui/styles";

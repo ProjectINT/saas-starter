@@ -8,14 +8,34 @@ import { z } from "zod";
  * This module has no side effects so next.config.ts can import it.
  */
 
-export const publicEnvSchema = z.object({
+const publicEnvShape = {
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
-});
+  // Optional captcha on sign-in, sign-up and password reset. Supabase Auth
+  // verifies the token, so it must be enabled there too ([auth.captcha]).
+  NEXT_PUBLIC_CAPTCHA_PROVIDER: z.enum(["turnstile", "hcaptcha"]).optional(),
+  NEXT_PUBLIC_CAPTCHA_SITE_KEY: z.string().min(1).optional(),
+};
 
-export const serverEnvSchema = publicEnvSchema.extend({
-  SUPABASE_SECRET_KEY: z.string().min(1),
-});
+type CaptchaEnv = {
+  NEXT_PUBLIC_CAPTCHA_PROVIDER?: string;
+  NEXT_PUBLIC_CAPTCHA_SITE_KEY?: string;
+};
+
+const captchaSiteKeyIsSet = (env: CaptchaEnv) => !env.NEXT_PUBLIC_CAPTCHA_PROVIDER || !!env.NEXT_PUBLIC_CAPTCHA_SITE_KEY;
+const captchaSiteKeyIssue = {
+  path: ["NEXT_PUBLIC_CAPTCHA_SITE_KEY"],
+  message: "is required when NEXT_PUBLIC_CAPTCHA_PROVIDER is set",
+};
+
+export const publicEnvSchema = z.object(publicEnvShape).refine(captchaSiteKeyIsSet, captchaSiteKeyIssue);
+
+export const serverEnvSchema = z
+  .object({
+    ...publicEnvShape,
+    SUPABASE_SECRET_KEY: z.string().min(1),
+  })
+  .refine(captchaSiteKeyIsSet, captchaSiteKeyIssue);
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

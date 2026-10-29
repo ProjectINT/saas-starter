@@ -1,8 +1,8 @@
 # SaaS Starter
 
-Multi-tenant SaaS template: Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS).
+Multi-tenant SaaS template: Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + HeroUI v3.
 
-Status: **phase 1**, the foundation (users, accounts, memberships, roles, Next.js ↔ Supabase wiring). See [docs/ROADMAP.md](docs/ROADMAP.md).
+Status: **phase 2**: users, accounts, memberships and roles in the database; sign-up, sign-in (password, Google), email confirmation, password reset, sign-out, account selection and onboarding in the app. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Quick start
 
@@ -17,7 +17,43 @@ npm run dev         # http://localhost:3000
 
 The app **does not start without its environment**: `next dev`, `next build` and `next start` stop with a list of missing variables (see [core/config/env.ts](core/config/env.ts) and [.env.example](.env.example)).
 
-Seeded local users (password `password123`): `alice@example.com` (owner of `acme`), `bob@example.com` (member of `acme`), `carol@example.com` (no accounts).
+Seeded local users (password `password123`): `alice@example.com` (owner of `acme`), `bob@example.com` (member of `acme`), `carol@example.com` (no accounts, goes to onboarding).
+
+Emails sent locally (confirmation, password reset) land in Mailpit: http://127.0.0.1:54424.
+
+## Auth flows
+
+| Flow | Path |
+|---|---|
+| Sign in | `/sign-in` → `/accounts` (or `?next=`) |
+| Sign up | `/sign-up` → email link → `/auth/confirm` → `/accounts` → `/onboarding` |
+| Password reset | `/forgot-password` → email link → `/auth/confirm` → `/reset-password` |
+| OAuth (Google, GitHub) | provider → `/auth/callback` → `/accounts` (or `?next=`) |
+| After sign-in | `/accounts`: no accounts → `/onboarding`, one → `/[slug]`, several → list |
+
+`proxy.ts` sends signed-out visitors of any non-public page to `/sign-in?next=…` and answers `401` on `/api/*`. Public routes are listed in [core/auth/public-routes.ts](core/auth/public-routes.ts).
+
+### Optional: Google sign-in
+
+1. Create an OAuth client in Google Cloud. Authorized redirect URI: `http://127.0.0.1:54421/auth/v1/callback` locally, `https://<project>.supabase.co/auth/v1/callback` hosted.
+2. Locally: put `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` into `supabase/.env`, set `enabled = true` under `[auth.external.google]` in [supabase/config.toml](supabase/config.toml), restart with `npm run db:stop && npm run db:start`. Hosted: Dashboard → Authentication → Providers → Google.
+
+The button appears by itself: the sign-in page asks Supabase Auth which providers are enabled.
+
+### Optional: captcha
+
+Supabase Auth verifies Turnstile or hCaptcha tokens on sign-up, sign-in, password reset and resend. Enable both sides together:
+
+- app: `NEXT_PUBLIC_CAPTCHA_PROVIDER` and `NEXT_PUBLIC_CAPTCHA_SITE_KEY` in `.env.local`;
+- Supabase: `[auth.captcha]` in `config.toml` with `SUPABASE_AUTH_CAPTCHA_SECRET` in `supabase/.env` (hosted: Dashboard → Authentication → Attack Protection).
+
+Test keys that always pass are listed in [.env.example](.env.example).
+
+### Hosted Supabase checklist
+
+- Authentication → URL Configuration: Site URL = the production URL; add preview/dev URLs to Redirect URLs (e.g. `https://*.vercel.app/**`).
+- Authentication → Emails: replace the Confirm signup, Reset password and Change email templates with the ones in [supabase/templates](supabase/templates) (they link to `/auth/confirm`), or run `supabase config push`.
+- Authentication → Providers → Email: minimum password length 8, "letters and digits" (matches [core/validation/password.ts](core/validation/password.ts)).
 
 ## Scripts
 
@@ -36,16 +72,25 @@ Seeded local users (password `password123`): `alice@example.com` (owner of `acme
 ## Layout
 
 ```
-app/                 routes (thin)
-core/                template core: config, Supabase clients, DB types
-  config/            env contract (zod), publicEnv, serverEnv
-  supabase/          client (browser), server (RSC/actions), proxy (session refresh), admin (service role)
+app/
+  (auth)/            sign-in, sign-up, forgot/reset password, auth/callback, auth/confirm, auth/error
+  (onboarding)/      accounts (picker), onboarding (create an account)
+  (legal)/           terms-of-use, privacy-policy (placeholders)
+  (app)/[account]/   tenant pages (placeholder home for now)
+core/                template core
+  auth/              public routes, safe redirects, session helpers, captcha, OAuth providers, auth screens
+  tenancy/           account queries, create-account action and form
+  ui/                providers (theme, router, toasts), theme switch, logo, Next.js links styled as HeroUI
+  validation/        password and slug rules shared by forms and server code
+  config/            env contract (zod), site name, route paths
+  supabase/          client (browser), server (RSC/actions), proxy (session + route guard), admin (service role)
   db/                generated database types
-proxy.ts             refreshes the Supabase session on every request
+proxy.ts             refreshes the Supabase session and guards routes on every request
 supabase/
   schemas/00-49      core schema (declarative source of truth)
   schemas/50_app/    product-specific schema and hooks
   migrations/        generated from schemas + hand-written data migrations
+  templates/         auth email templates
   tests/database/    pgTAP: privileges, provisioning, RLS
 ```
 

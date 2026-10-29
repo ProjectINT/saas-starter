@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EnvError, parseEnv, serverEnvSchema } from "./env";
+import { EnvError, parseEnv, publicEnvSchema, serverEnvSchema } from "./env";
 
 const valid = {
   NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54421",
@@ -37,5 +37,29 @@ describe("parseEnv", () => {
     expect(() => parseEnv(serverEnvSchema, { ...valid, NEXT_PUBLIC_SUPABASE_URL: "localhost" })).toThrow(
       /NEXT_PUBLIC_SUPABASE_URL/
     );
+  });
+
+  describe("captcha", () => {
+    const captcha = { NEXT_PUBLIC_CAPTCHA_PROVIDER: "turnstile", NEXT_PUBLIC_CAPTCHA_SITE_KEY: "1x00000000000000000000AA" };
+
+    it("is optional", () => {
+      expect(parseEnv(publicEnvSchema, valid)).not.toHaveProperty("NEXT_PUBLIC_CAPTCHA_PROVIDER");
+    });
+
+    it("accepts a provider with a site key", () => {
+      expect(parseEnv(serverEnvSchema, { ...valid, ...captcha })).toEqual({ ...valid, ...captcha });
+    });
+
+    it("requires the site key when a provider is set", () => {
+      expect(() => parseEnv(publicEnvSchema, { ...valid, NEXT_PUBLIC_CAPTCHA_PROVIDER: "hcaptcha" })).toThrow(
+        /NEXT_PUBLIC_CAPTCHA_SITE_KEY is required when NEXT_PUBLIC_CAPTCHA_PROVIDER is set/
+      );
+    });
+
+    it("rejects an unknown provider", () => {
+      expect(() => parseEnv(publicEnvSchema, { ...valid, ...captcha, NEXT_PUBLIC_CAPTCHA_PROVIDER: "recaptcha" })).toThrow(
+        /NEXT_PUBLIC_CAPTCHA_PROVIDER/
+      );
+    });
   });
 });

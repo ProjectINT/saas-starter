@@ -24,6 +24,22 @@ Multi-tenant SaaS template on Next.js 16 + Supabase. Read [README.md](README.md)
 
 Identify the user on the server with `supabase.auth.getClaims()`, not `getSession()`.
 
+## Auth
+
+- Server Components and layouts read the user with `getClaims()` / `requireClaims()` from `core/auth/session` (cached per request). Pages check on their own even though `proxy.ts` guards routes.
+- Route paths live in `core/config/routes.ts`. A new page reachable without a session must be added to `PUBLIC_ROUTES` in `core/auth/public-routes.ts`; everything else requires one. A new top-level route also goes into `accounts_slug_not_reserved` (`supabase/schemas/21_accounts.sql`).
+- Every user-supplied redirect target (`next` in query strings, forms, callbacks) goes through `safeNextPath()`.
+- Sign-in, sign-up, password reset and resend run in the browser through `core/supabase/client` and pass `captcha.token` from `useCaptcha()`; reset the captcha after each call. Do not proxy them through API routes: Supabase Auth verifies the captcha and rate-limits per user IP.
+- Show Supabase Auth errors with `authErrorMessage(error)` (by error code), never `error.message`.
+
+## UI
+
+- HeroUI v3 (`@heroui/react`): compound components (`Card.Header`, `Checkbox.Control`), no provider. Root providers are in `core/ui/providers.tsx` (next-themes, `RouterProvider`, `Toast.Provider`); toasts via `toast.success()` / `toast.danger()`.
+- Next.js links: `AppLink` / `ButtonLink` from `core/ui/links` (next/link with HeroUI classes), not HeroUI `Link` with `href`.
+- Theme colors through HeroUI tokens (`bg-background`, `bg-surface`, `text-muted`, `text-accent`, `text-danger`), so both themes work. Icons from `@gravity-ui/icons`.
+- Forms: HeroUI `Form` + `TextField`/`Label`/`Input`/`FieldError`; client rules in `core/validation` mirror the database or Supabase Auth settings and name what they mirror. Server field errors go into `Form validationErrors`.
+- UI text is English until the i18n phase; keep strings in components, not concatenated from fragments.
+
 ## Database workflow
 
 1. Edit the declarative files in `supabase/schemas/` (files apply in name order; table, grants and policies live together).
@@ -51,3 +67,13 @@ ESLint (`npm run lint`) carries the formatting rules of the donor project: doubl
 ## Checks before finishing
 
 `npm run lint && npm run typecheck && npm run test:run`, plus the database checks above when SQL changed.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
