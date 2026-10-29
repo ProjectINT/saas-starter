@@ -13,6 +13,11 @@ export const Metadata = {
   onboarding: { word: "Create an account", context: "Browser tab title" },
   invitation: { word: "Invitation", context: "Browser tab title" },
   members: { word: "Members", context: "Browser tab title" },
+  settingsProfile: { word: "Profile", context: "Browser tab title" },
+  settingsPreferences: { word: "Preferences", context: "Browser tab title" },
+  settingsAccount: { word: "Account settings", context: "Browser tab title" },
+  adminAccounts: { word: "Accounts · Admin", context: "Browser tab title" },
+  adminUsers: { word: "Users · Admin", context: "Browser tab title" },
   privacyPolicy: { word: "Privacy Policy", context: "Browser tab title" },
   termsOfUse: { word: "Terms of Use", context: "Browser tab title" },
 } satisfies DictionarySection;

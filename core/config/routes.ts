@@ -12,9 +12,14 @@ export const routes = {
   authCallback: "/auth/callback",
   authConfirm: "/auth/confirm",
   authError: "/auth/error",
+  /** Supabase Auth's Send Email Hook posts here (signed, no session). */
+  authEmailHook: "/api/auth/send-email",
   accounts: "/accounts",
   onboarding: "/onboarding",
   invite: "/invite",
+  admin: "/admin",
+  adminAccounts: "/admin/accounts",
+  adminUsers: "/admin/users",
   privacyPolicy: "/privacy-policy",
   termsOfUse: "/terms-of-use",
 } as const;
@@ -22,5 +27,10 @@ export const routes = {
 export const accountPath = (slug: string) => `/${slug}`;
 
 export const accountMembersPath = (slug: string) => `/${slug}/members`;
+
+/** A page inside an account by its segment ("" for the account home). */
+export const accountSectionPath = (slug: string, segment: string) => (segment ? `/${slug}/${segment}` : `/${slug}`);
+
+export const accountSettingsPath = (slug: string, section?: string) => `/${slug}/settings${section ? `/${section}` : ""}`;
 
 export const invitePath = (token: string) => `${routes.invite}/${token}`;

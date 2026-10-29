@@ -6,6 +6,8 @@ const valid = {
   NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54421",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
   SUPABASE_SECRET_KEY: "sb_secret_test",
+  EMAIL_PROVIDER: "console",
+  EMAIL_FROM: "Test <noreply@example.com>",
 };
 
 describe("parseEnv", () => {
@@ -24,6 +26,7 @@ describe("parseEnv", () => {
       expect(message).toContain("NEXT_PUBLIC_SUPABASE_URL is not set");
       expect(message).toContain("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is not set");
       expect(message).toContain("SUPABASE_SECRET_KEY is not set");
+      expect(message).toContain("EMAIL_PROVIDER");
     }
   });
 
@@ -60,6 +63,30 @@ describe("parseEnv", () => {
       expect(() => parseEnv(publicEnvSchema, { ...valid, ...captcha, NEXT_PUBLIC_CAPTCHA_PROVIDER: "recaptcha" })).toThrow(
         /NEXT_PUBLIC_CAPTCHA_PROVIDER/
       );
+    });
+  });
+
+  describe("email", () => {
+    it("needs host and port for SMTP", () => {
+      expect(() => parseEnv(serverEnvSchema, { ...valid, EMAIL_PROVIDER: "smtp", SMTP_HOST: "127.0.0.1" })).toThrow(
+        /SMTP_HOST and SMTP_PORT are required when EMAIL_PROVIDER is smtp/
+      );
+      expect(parseEnv(serverEnvSchema, { ...valid, EMAIL_PROVIDER: "smtp", SMTP_HOST: "127.0.0.1", SMTP_PORT: "54425" })).toMatchObject({
+        SMTP_PORT: 54425,
+      });
+    });
+
+    it("needs an API key for Resend", () => {
+      expect(() => parseEnv(serverEnvSchema, { ...valid, EMAIL_PROVIDER: "resend" })).toThrow(
+        /RESEND_API_KEY is required when EMAIL_PROVIDER is resend/
+      );
+    });
+
+    it("accepts hook secrets in the Standard Webhooks format, several while rotating", () => {
+      const secret = "v1,whsec_dGVzdC1zZWNyZXQ=";
+
+      expect(parseEnv(serverEnvSchema, { ...valid, SEND_EMAIL_HOOK_SECRET: `${secret}|${secret}` })).toHaveProperty("SEND_EMAIL_HOOK_SECRET");
+      expect(() => parseEnv(serverEnvSchema, { ...valid, SEND_EMAIL_HOOK_SECRET: "whsec_dGVzdA==" })).toThrow(/SEND_EMAIL_HOOK_SECRET/);
     });
   });
 });

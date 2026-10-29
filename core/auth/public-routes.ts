@@ -13,6 +13,7 @@ export const PUBLIC_ROUTES: readonly string[] = [
   routes.authCallback,
   routes.authConfirm,
   routes.authError,
+  routes.authEmailHook,
   routes.privacyPolicy,
   routes.termsOfUse,
 ];

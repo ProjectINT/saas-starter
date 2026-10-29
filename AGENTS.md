@@ -4,7 +4,9 @@ Multi-tenant SaaS template on Next.js 16 + Supabase. Read [README.md](README.md)
 
 ## Boundaries
 
-- `core/` and `supabase/schemas/00-49` are the template core. Products built on the template put their code in `modules/`, `app/(app)/...` and `supabase/schemas/50_app/`, and extend the core through hooks (e.g. `private.app_on_account_created`), not by editing it.
+- `core/` and `supabase/schemas/00-49` are the template core. Products built on the template put their code in `modules/`, `app/(app)/...` and `supabase/schemas/50_app/`, and extend the core through hooks (e.g. `private.app_on_account_created`) and registries (`modules/index.ts`: account tabs, settings sections), not by editing it.
+- A new module follows [docs/ADDING_A_MODULE.md](docs/ADDING_A_MODULE.md); `modules/example` (Projects) is the reference.
+- Tabs and settings sections come from `core/navigation/registry.ts`; never hard-code a menu in a component. A new section is a registry entry plus its page under `app/(app)/[account]/settings/<segment>/`, which checks its own permission.
 - No private packages (`@projectint/*`): `npm ci` must work without tokens. ESLint enforces it.
 
 ## Environment
@@ -54,35 +56,45 @@ Identify the user on the server with `supabase.auth.getClaims()`, not `getSessio
 
 Feature state and forms use [palistor](https://www.npmjs.com/package/palistor). Examples: `core/tenancy/members-store.ts` (lists, a form, row actions) and `create-account-store.ts` (a form).
 
-- The dependency is an exact npm version (`"palistor": "0.0.32"`). Never `file:`, the PaliRent submodule or copied sources; a missing feature or a bug means a new palistor release and a new pin.
+- The dependency is an exact npm version (`"palistor": "0.0.32"`). Never `file:`, the donor project's submodule or copied sources; a missing feature or a bug means a new palistor release and a new pin.
 - One store per feature, no global store. The config is built by a function and the store is created on mount: `const [store] = useState(createMembersStore)` in the feature's root client component. A module-level store would be shared by every SSR request and keep data across accounts.
 - Shared values (account id, invitation id, the router from `useRouter()`, the root translator from `useTranslations()`) go into `store.context` through `useStoreContext(store, { ... } satisfies XContext)`, never into hidden fields. Each store exports its `XContext`; submit callbacks type it in their store interface (`readonly context: XContext`), list resolvers read it as `Partial<XContext>` (empty until mount).
 - Texts: the root component also calls `useTranslator(store, t)`, so `validate(value, values, t)` gets the translator; `onSubmit` uses `store.context.t`. Field errors from an RPC are stored translated in `<field>Error` leaves.
 - No `useEffect` that writes React state into a store. Reset or prefill in event handlers (the invite dialog calls `invite.reset()` when it opens).
-- Data: `defineList` resolvers query through `core/supabase/client` (RLS applies) with the account id from `store.context`, and return `[]` while it is missing: the context arrives after mount, so nothing is fetched during SSR. Show `list.error` with `LoadError` and `list.reload`.
-- Mutations: a group's `onSubmit` calls one RPC with `supabase.rpc` from the browser. On success it reloads the lists it changed (`store.proxy.members.reload()`), reports with `toast`, and navigates with `store.context.router`; it calls `router.refresh()` when server-rendered data changed (e.g. the caller's own role). Field errors go into `<field>Error` leaves; anything else is `toast.danger(rpcErrorMessage(error))` or a `formError` leaf. The page's server component only checks access.
+- Data: `defineList` resolvers query through `core/supabase/client` (RLS applies) with the account id from `store.context`, and return `[]` while it is missing: the context arrives after mount, so nothing is fetched during SSR (a resolver that queries without such a guard runs on the server as anon and causes a hydration mismatch). Show `list.error` with `LoadError` and `list.reload`. A list whose query can change during a load (search, paging) loads again until its rows match the query: `reload()` joins a load already in flight (see `loadPage` in `core/admin/admin-stores.ts`).
+- Mutations: a group's `onSubmit` calls one RPC with `supabase.rpc` from the browser. A mutation that also needs server secrets (sending an email) calls one Server Action instead, which runs the RPC as the user through `core/supabase/server` and then does the server part; it returns the RPC error as `{ code, message }` for the same mapping (see `createInvitation` in `core/tenancy/invitation-actions.ts`). On success it reloads the lists it changed (`store.proxy.members.reload()`), reports with `toast`, and navigates with `store.context.router`; it calls `router.refresh()` when server-rendered data changed (e.g. the caller's own role). Field errors go into `<field>Error` leaves; anything else is `toast.danger(rpcErrorMessage(error))` or a `formError` leaf. The page's server component only checks access.
 - Forms: HeroUI `Form validationBehavior="aria"`, fields bound with `textFieldProps(field)` (`core/ui/field-props.ts`) and `<FieldError>{field.errorMessage}</FieldError>`. A field's `validate` returns its server error first, then the client rule (`values.emailError || validateEmail(value) || undefined`); its `setter` clears that server error.
 - Row actions share one action group per feature (`type`, `targetId`, …): set it with `setValues`, then `submit()`. Confirmation dialogs are open while `type` holds an action that needs one.
 - Components: `useForm(store)` once in the root, subtrees (`form.invite`, `form.members`) go down as props, and every component that reads field state calls `useForm(prop)`. List rows are components with their own `useForm(row)`; do not read entity fields inside third-party render callbacks.
 - Empty leaf values are `""` or `false`, not `null` (palistor 0.0.32 reads `null` back as `""`).
+- Do not name a field `description`: palistor reserves it as a config key and drops it from the group's type (the example module uses `details` for `projects.description`).
 - Store configs have Vitest tests with `@/core/supabase/client` and `@heroui/react` mocked (`core/tenancy/*-store.test.ts`): validation, RPC errors in fields, reset.
 
 ## Internationalization (next-intl)
 
 - Source of truth: TypeScript dictionaries in `messages/dictionary/core/` (template) and `messages/dictionary/app/` (product), entries `{ word, tip?, context? }` in ICU syntax. `messages/<locale>.json` and `messages/translations.lock.json` are generated: run `npm run i18n:build` after editing a dictionary, `npm run i18n:translate` (OpenAI, `OPENAI_API_KEY`) for missing or outdated translations, or add them to the locale file by hand and build again. Never edit `en.json`. CI runs `npm run i18n:check`.
-- Locales are listed once, in `core/i18n/config.ts` (`LOCALES`, `DEFAULT_LOCALE`). The request locale is the `NEXT_LOCALE` cookie, else Accept-Language. The switcher (`LocaleSwitcher`) sets the cookie and `profiles.locale`; sign-in syncs the two (`syncProfileLocale`). Emails and other server code that writes for another user pass that user's locale explicitly: `getTranslations({ locale, namespace })`.
+- Locales are listed once, in `core/i18n/config.ts` (`LOCALES`, `DEFAULT_LOCALE`). The request locale is the `NEXT_LOCALE` cookie, else Accept-Language. The switcher (`LocaleSwitcher`) sets the cookie and `profiles.locale`; sign-in syncs the two (`syncProfilePreferences`, which does the same for the time zone: `NEXT_TIMEZONE` and `profiles.timezone`). Emails and other server code that writes for another user pass that user's locale explicitly: `getTranslations({ locale, namespace })`.
 - Keys are typed from `en.json`: `t("Members.title")` is checked by tsc. Components use `useTranslations("Namespace")` / `getTranslations(...)`; code outside components (validators, error mappers, store callbacks) takes a root `t: Translate` (`core/i18n/translate.ts`) and uses full keys.
-- Rich text with tags (`"No account? <link>Sign up</link>"`) goes through `t.rich`; never build a sentence from fragments. Dates and numbers through `useFormatter()` / `getFormatter()` (time zone `TIME_ZONE`).
+- Rich text with tags (`"No account? <link>Sign up</link>"`) goes through `t.rich`; never build a sentence from fragments. Dates and numbers through `useFormatter()` / `getFormatter()`: they use the request's time zone (the user's, else `DEFAULT_TIME_ZONE`), the same on the server and in the browser.
 - Page titles: `export const generateMetadata = pageMetadata("key")` with the key in `Metadata`. `Metadata` and `Legal` are server-only namespaces (`SERVER_NAMESPACES`), left out of the browser bundle; add to that list any new namespace that only server code reads.
 - Tests use `englishT` from `core/i18n/testing.ts`, so assertions read English.
 
 ## Errors and monitoring
 
-- Report unexpected errors with `captureException(error, context)` / `captureMessage` from `@/core/errors`, never from `untracker` directly. Expected outcomes (a wrong password, a taken slug, `not_allowed`) are shown, not reported; `authErrorMessage` and `rpcErrorMessage` report only codes they do not know.
+- Report unexpected errors with `captureException(error, context)` / `captureMessage` from `@/core/errors`, never from `untracker` directly. Expected outcomes (a wrong password, a taken slug, `not_allowed`) are shown, not reported; `authErrorMessage` and `rpcErrorMessage` report only codes they do not know (and a send-email hook that timed out).
 - Server errors in rendering, Route Handlers, Server Actions and `proxy.ts` are reported by `onRequestError` (`instrumentation.ts`) with the route pattern, never the URL (paths carry tokens). Browser errors: window listeners in `instrumentation-client.ts` and `app/error.tsx` (which skips errors with a `digest`, already reported on the server).
 - Where events go is configured in `core/config/monitoring.ts` (console by default). Every event and error is scrubbed before it reaches the transport (`core/errors/scrub.ts`): secret-looking keys and JWTs. Still, never put passwords, tokens or full URLs into context.
 - Error pages: `app/error.tsx` and `app/not-found.tsx` are translated; `app/global-error.tsx` replaces the root layout and stays minimal English.
 - Tests run with a recording transport (`vitest.setup.ts`); assert with `reported.events` from `core/errors/testing.ts`.
+
+## Email
+
+- Send with `sendEmail()` from `@/core/email` (server only), never with a provider SDK. The provider is `EMAIL_PROVIDER` (smtp, resend, console); locally everything lands in Mailpit.
+- An email is a template function in `core/email/templates.ts`: it takes a root `t` in the reader's language and returns `renderEmail(content, …)`. Content is plain text (no tags in `Emails` messages): the layout escapes it, so user input goes in as is. Links are absolute and http(s).
+- Write in the reader's language: `savedLocale({ id })` / `savedLocale({ email })` (admin client, only after the action is authorized), else a sensible fallback (the sender's request locale, the default locale), then `emailTranslator(locale)`.
+- Supabase Auth's own emails come through the Send Email Hook (`app/api/auth/send-email`, signature checked with `SEND_EMAIL_HOOK_SECRET`); their links go to `/auth/confirm` with the token hash. Do not add `[auth.email.template.*]` to `config.toml`.
+- Anything that lets a user trigger email to an address they choose needs a limit in the database (see `create_invitation`).
+- Emails that should not hold up a redirect go into `after()` (see `sendWelcomeEmailOnce`). Report failures with `captureException`; never put tokens or links into the report context.
 
 ## Database workflow
 
@@ -105,6 +117,7 @@ Feature state and forms use [palistor](https://www.npmjs.com/package/palistor). 
 - Invitations are bound to the invited email: accepting compares it with the caller's confirmed email (`private.my_confirmed_email()`), never trusts the link token alone.
 - `raw_user_meta_data` is client-controlled: only cosmetic profile fields may come from it. Server-assigned data goes into `app_metadata` or explicit RPCs.
 - Views are `security_invoker = true`.
+- Platform admin RPCs (`40_admin.sql`) start with `PERFORM private.require_platform_admin()`; Server Actions that use the service role for admins first ask `rpc("is_platform_admin")` as the user. Never grant platform rights through a tenant permission.
 - `supabase/tests/database/01_privileges.test.sql` holds the whitelist of functions callable by `authenticated`. Adding a client-callable function means extending it in the same change; anything else failing there is a bug.
 
 ## Code style
@@ -113,7 +126,7 @@ ESLint (`npm run lint`) carries the formatting rules of the donor project: doubl
 
 ## Checks before finishing
 
-`npm run lint && npm run typecheck && npm run i18n:check && npm run test:run`, plus the database checks above when SQL changed. CI (`.github/workflows/ci.yml`) runs the same, plus `next build`, the migration drift check and the generated-types check.
+`npm run lint && npm run typecheck && npm run i18n:check && npm run test:run`, plus the database checks above when SQL changed, and `npm run test:e2e` when a user flow changed (e2e flows in `e2e/`: users through the Auth admin API, emails from Mailpit, English UI, locators by role and label). CI (`.github/workflows/ci.yml`) runs the same, plus `next build`, the migration drift check and the generated-types check.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

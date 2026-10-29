@@ -7,6 +7,8 @@ export const PERMISSIONS = [
   "members.invite",
   "members.manage",
   "members.view",
+  "projects.manage",
+  "projects.view",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

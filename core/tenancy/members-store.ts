@@ -11,12 +11,14 @@ import { captureException } from "@/core/errors";
 import { createClient } from "@/core/supabase/client";
 import { normalizeEmail, validateEmail } from "@/core/validation/email";
 
+import { createInvitation } from "./invitation-actions";
 import { ACCOUNT_ROLES, byRoleThenName, type AccountRole } from "./roles";
 import { rpcErrorKey, rpcErrorMessage } from "./rpc-errors";
 
 // State of the members page: the roster, open invitations, the invite form and
 // the member action in progress. Data comes from the browser Supabase client
 // (RLS applies); every change is one RPC that checks permission and rank itself.
+// Inviting goes through a Server Action, which also emails the link.
 
 /** What MembersView puts into store.context. */
 export interface MembersContext {
@@ -55,6 +57,8 @@ interface InviteValues {
   formError: string;
   /** Path of the created invitation link; the token behind it is not stored, so it is shown only now. */
   link: string;
+  /** Whether the link also went out by email. */
+  emailSent: boolean;
 }
 
 interface ActionValues {
@@ -155,19 +159,25 @@ export function inviteErrorFields(error: { code?: string; message: string }, t: 
 
 async function submitInvitation(values: InviteValues, store: MembersStoreApi) {
   const { accountId, t } = store.context;
-  const { data: token, error } = await createClient().rpc("create_invitation", {
-    p_account_id: accountId,
-    p_email: normalizeEmail(values.email),
-    p_role: values.role,
-  });
+  let result: Awaited<ReturnType<typeof createInvitation>>;
 
-  if (error) {
-    store.setValues({ invite: inviteErrorFields(error, t) });
+  try {
+    result = await createInvitation(accountId, normalizeEmail(values.email), values.role);
+  } catch (error) {
+    // The action itself failed (network, deployment change), not the RPC.
+    captureException(error, { action: "createInvitation" });
+    store.setValues({ invite: { formError: t("RpcErrors.fallback") } });
 
     return;
   }
 
-  store.setValues({ invite: { formError: "", link: invitePath(token) } });
+  if (result.error) {
+    store.setValues({ invite: inviteErrorFields(result.error, t) });
+
+    return;
+  }
+
+  store.setValues({ invite: { formError: "", link: invitePath(result.token), emailSent: result.emailSent } });
   store.proxy.invitations.reload();
 }
 
@@ -291,6 +301,7 @@ const membersConfig = () => ({
     roleError: { value: "" },
     formError: { value: "" },
     link: { value: "" },
+    emailSent: { value: false },
     onSubmit: submitInvitation,
   },
 

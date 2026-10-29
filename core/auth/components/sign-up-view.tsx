@@ -57,8 +57,9 @@ export function SignUpView({ next, providers }: SignUpViewProps) {
       email,
       password,
       options: {
-        // emailRedirectTo serves the default Supabase email template; the
-        // template in supabase/templates links to /auth/confirm instead.
+        // The app's confirmation email (send-email hook) takes its origin and
+        // `next` and links to /auth/confirm; Supabase's default email, used
+        // without the hook, links here directly.
         emailRedirectTo: authCallbackUrl(),
         captchaToken: captcha.token,
         // Cosmetic: the profile trigger copies it into profiles.locale.

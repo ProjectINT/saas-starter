@@ -1,7 +1,7 @@
 -- Local development data. Runs on `supabase db reset` only, never in production.
 --
 -- Users (password for all: password123):
---   alice@example.com  owner of "acme"
+--   alice@example.com  owner of "acme", platform admin (/admin)
 --   bob@example.com    member of "acme"
 --   carol@example.com  no accounts (goes to onboarding)
 
@@ -50,3 +50,6 @@ INSERT INTO public.account_members (account_id, user_id, role, invited_by)
 VALUES
   ('aaaaaaaa-0000-4000-8000-000000000001', 'a1111111-1111-4111-8111-111111111111', 'owner', NULL),
   ('aaaaaaaa-0000-4000-8000-000000000001', 'b2222222-2222-4222-8222-222222222222', 'member', 'a1111111-1111-4111-8111-111111111111');
+
+INSERT INTO private.platform_admins (user_id)
+VALUES ('a1111111-1111-4111-8111-111111111111');

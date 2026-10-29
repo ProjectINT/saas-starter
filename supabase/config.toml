@@ -109,8 +109,9 @@ openai_api_key = "env(OPENAI_API_KEY)"
 enabled = true
 # Port to use for the email testing server web interface.
 port = 54424
-# Uncomment to expose additional ports for testing user applications that send emails.
-# smtp_port = 54325
+# SMTP port of Mailpit, so the app's own emails (EMAIL_PROVIDER=smtp, written
+# by `npm run env:local`) land next to the Auth ones.
+smtp_port = 54425
 # pop3_port = 54326
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
@@ -252,20 +253,8 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Auth emails link to /auth/confirm?token_hash=... (verified on the server, so
-# links work in any browser). Hosted projects: paste the same templates into
-# Dashboard -> Authentication -> Emails, or push them with `supabase config push`.
-[auth.email.template.confirmation]
-subject = "Confirm your email"
-content_path = "./supabase/templates/confirmation.html"
-
-[auth.email.template.recovery]
-subject = "Reset your password"
-content_path = "./supabase/templates/recovery.html"
-
-[auth.email.template.email_change]
-subject = "Confirm your new email"
-content_path = "./supabase/templates/email_change.html"
+# No [auth.email.template.*]: Auth emails are written by the app (the send
+# email hook below), from the dictionaries and in the user's language.
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
@@ -294,6 +283,17 @@ max_frequency = "5s"
 # timebox = "24h"
 # Force log out if the user has been inactive longer than the specified duration.
 # inactivity_timeout = "8h"
+
+# Auth hands every email to the app instead of sending it: the route renders
+# it in the user's language and sends it through EMAIL_PROVIDER (Mailpit
+# locally). `npm run dev` must be running on port 3000 for sign-up and
+# password reset emails. The secret is for local use only and is copied into
+# .env.local by `npm run env:local`; hosted projects generate their own in
+# Dashboard -> Authentication -> Hooks.
+[auth.hook.send_email]
+enabled = true
+uri = "http://host.docker.internal:3000/api/auth/send-email"
+secrets = "v1,whsec_/h4jZJQ+L8qow7Ehr2wI8K+zXFE0TmLeuguPimFYxYs="
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
 # [auth.hook.before_user_created]

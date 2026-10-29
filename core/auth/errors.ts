@@ -30,7 +30,13 @@ const CODES = [
 const ALIASES: Record<string, AuthErrorKey> = {
   email_exists: "user_already_exists",
   session_not_found: "session_expired",
+  // The send-email hook (app/api/auth/send-email) did not answer in time.
+  hook_timeout: "email_send_failed",
+  hook_timeout_after_retry: "email_send_failed",
 };
+
+/** Shown to the user, but still a fault of ours: reported like unknown errors. */
+const REPORTED: readonly AuthErrorKey[] = ["unknown", "email_send_failed"];
 
 const isCode = (code: string): code is (typeof CODES)[number] => (CODES as readonly string[]).includes(code);
 
@@ -61,7 +67,7 @@ export function authErrorKey(error: AuthErrorLike): AuthErrorKey {
 export function authErrorMessage(error: AuthErrorLike, t: Translate) {
   const key = authErrorKey(error);
 
-  if (key === "unknown") {
+  if (REPORTED.includes(key)) {
     captureException(error, { source: "auth" });
   }
 

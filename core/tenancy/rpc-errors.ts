@@ -22,6 +22,8 @@ const RPC_ERROR_KEYS = [
   "invitation_closed",
   "invitation_expired",
   "account_invitations_email_format",
+  "invitation_limit_reached",
+  "account_not_found",
 ] as const satisfies readonly RpcErrorKey[];
 
 const isRpcErrorKey = (value: string): value is RpcErrorKey => (RPC_ERROR_KEYS as readonly string[]).includes(value);

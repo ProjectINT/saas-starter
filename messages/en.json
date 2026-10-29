@@ -22,7 +22,8 @@
   "Navigation": {
     "account": "Account",
     "overview": "Overview",
-    "members": "Members"
+    "members": "Members",
+    "settings": "Settings"
   },
   "Validation": {
     "emailRequired": "Enter an email address.",
@@ -48,6 +49,8 @@
     "invitation_closed": "This invitation has already been used or withdrawn.",
     "invitation_expired": "This invitation has expired. Ask for a new one.",
     "account_invitations_email_format": "Enter a valid email address.",
+    "invitation_limit_reached": "Too many invitations. Revoke unused ones or try again tomorrow.",
+    "account_not_found": "This account does not exist.",
     "fallback": "Something went wrong. Try again."
   },
   "Errors": {
@@ -129,6 +132,7 @@
       "session_expired": "Your session has expired. Sign in again.",
       "reauthentication_needed": "Sign in again to change your password.",
       "network": "Cannot reach the server. Check your connection and try again.",
+      "email_send_failed": "We could not send the email. Try again in a few minutes.",
       "unknown": "Something went wrong. Try again."
     }
   },
@@ -198,9 +202,11 @@
       "title": "Invite to {account}",
       "emailPlaceholder": "colleague@example.com",
       "role": "Role",
-      "submit": "Create invitation",
+      "submit": "Send invitation",
+      "sentTitle": "Invitation sent",
+      "sent": "We emailed an invitation to {email}. It works for 7 days and only for that address. You can also pass on the link yourself: it is shown only once.",
       "createdTitle": "Invitation created",
-      "created": "Send this link to {email}. It works for 7 days, only for that email address, and is shown only once.",
+      "created": "We could not email {email}. Send them this link yourself. It works for 7 days, only for that email address, and is shown only once.",
       "link": "Invitation link",
       "copy": "Copy link",
       "copied": "Link copied.",
@@ -237,6 +243,174 @@
     "join": "{inviter} invited you to join with the {role} role.",
     "someone": "A member"
   },
+  "Settings": {
+    "title": "Settings",
+    "groups": {
+      "personal": "You",
+      "account": "This account"
+    },
+    "sections": {
+      "profile": "Profile",
+      "preferences": "Preferences",
+      "account": "Account"
+    },
+    "saveFailed": "Could not save. Try again.",
+    "save": "Save",
+    "profile": {
+      "nameTitle": "Name",
+      "nameDescription": "Shown to the members of your accounts.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "nameSaved": "Your name has been saved.",
+      "emailTitle": "Email",
+      "emailDescription": "You sign in with {email} and receive emails there.",
+      "newEmail": "New email",
+      "changeEmail": "Change email",
+      "emailSame": "This is already your email.",
+      "emailSent": "We sent confirmation links to {current} and {next}. The change takes effect once both are confirmed.",
+      "emailPending": "Waiting for the change to {email} to be confirmed from both inboxes.",
+      "passwordTitle": "Password",
+      "passwordDescription": "Change the password you sign in with.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "changePassword": "Change password",
+      "passwordChanged": "Your password has been changed."
+    },
+    "preferences": {
+      "themeTitle": "Theme",
+      "themeDescription": "Saved in this browser.",
+      "themeLight": "Light",
+      "themeDark": "Dark",
+      "themeSystem": "Same as the device",
+      "languageTitle": "Language",
+      "languageDescription": "For the interface and the emails we send you.",
+      "timeZoneTitle": "Time zone",
+      "timeZoneDescription": "Dates and times are shown in this zone.",
+      "timeZone": "Time zone",
+      "useDeviceTimeZone": "Use {timeZone}",
+      "noTimeZones": "No matching time zone",
+      "saved": "Saved."
+    },
+    "account": {
+      "generalTitle": "General",
+      "generalDescription": "The name and web address of the account.",
+      "saved": "Account settings saved.",
+      "urlChanged": "Links to the old address stop working.",
+      "deleteTitle": "Delete account",
+      "deleteDescription": "Deletes {account} for everyone, with its members, invitations and data. This cannot be undone.",
+      "deleteConfirmTitle": "Delete {account}?",
+      "deleteConfirmBody": "Everything in the account is deleted permanently. Type {slug} to confirm.",
+      "deleteConfirmLabel": "Account URL",
+      "deleteConfirmMismatch": "Type the account URL exactly.",
+      "deleted": "{account} was deleted."
+    }
+  },
+  "Admin": {
+    "title": "Admin",
+    "navLabel": "Admin sections",
+    "backToApp": "Back to the app",
+    "search": "Search",
+    "results": "{count, plural, =0 {Nothing found} one {# result} other {# results}}",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {page} of {pages}",
+    "loadFailed": "Could not load the list.",
+    "created": "Created {date}",
+    "accounts": {
+      "title": "Accounts",
+      "searchPlaceholder": "Name, URL or owner email",
+      "owner": "Owner: {email}",
+      "members": "{count, plural, one {# member} other {# members}}",
+      "active": "Active",
+      "deactivated": "Deactivated",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "deactivateTitle": "Deactivate {account}?",
+      "deactivateBody": "Its members lose access at once. The data stays, and you can reactivate the account later.",
+      "deactivatedToast": "{account} was deactivated.",
+      "reactivated": "{account} was reactivated."
+    },
+    "users": {
+      "title": "Users",
+      "searchPlaceholder": "Email or name",
+      "accounts": "{count, plural, =0 {No accounts} one {# account} other {# accounts}}",
+      "platformAdmin": "Platform admin",
+      "unconfirmed": "Email not confirmed",
+      "blocked": "Blocked",
+      "block": "Block",
+      "unblock": "Unblock",
+      "blockTitle": "Block {email}?",
+      "blockBody": "They cannot sign in until unblocked, and are signed out within an hour.",
+      "blockedToast": "{email} was blocked.",
+      "unblockedToast": "{email} was unblocked.",
+      "cannotBlockSelf": "You cannot block yourself.",
+      "lastSignIn": "Last sign-in {date}",
+      "neverSignedIn": "Never signed in"
+    }
+  },
+  "Emails": {
+    "layout": {
+      "linkFallback": "If the button does not work, copy this link into your browser:",
+      "footer": "This email was sent by {site} to {email}."
+    },
+    "linkExpiry": "The link works once and expires in {hours, plural, one {an hour} other {# hours}}.",
+    "codeExpiry": "The code works once and expires in {hours, plural, one {an hour} other {# hours}}.",
+    "invitation": {
+      "subject": "{inviter} invited you to {account}",
+      "heading": "Join {account}",
+      "body": "{inviter} invited you to join {account} on {site} with the {role} role.",
+      "action": "Accept invitation",
+      "validity": "The invitation is valid for {days, plural, one {# day} other {# days}} and only for {email}.",
+      "ignore": "If you did not expect this invitation, ignore this email."
+    },
+    "welcome": {
+      "subject": "Welcome to {site}",
+      "heading": "Welcome to {site}",
+      "body": "Your profile is ready. Create an account for your team, or join one you were invited to.",
+      "action": "Open {site}"
+    },
+    "confirmSignup": {
+      "subject": "Confirm your email",
+      "heading": "Confirm your email",
+      "body": "Follow the link to confirm {email} and finish signing up for {site}.",
+      "action": "Confirm email",
+      "ignore": "If you did not sign up, ignore this email."
+    },
+    "magicLink": {
+      "subject": "Your sign-in link for {site}",
+      "heading": "Sign in to {site}",
+      "body": "Follow the link to sign in as {email}.",
+      "action": "Sign in",
+      "ignore": "If you did not ask for it, ignore this email."
+    },
+    "recovery": {
+      "subject": "Reset your password",
+      "heading": "Reset your password",
+      "body": "Follow the link to set a new password for {email}.",
+      "action": "Set a new password",
+      "ignore": "If you did not ask for it, ignore this email: your password stays the same."
+    },
+    "authInvite": {
+      "subject": "You are invited to {site}",
+      "heading": "Join {site}",
+      "body": "You were invited to sign up for {site} with {email}.",
+      "action": "Accept invitation",
+      "ignore": "If you did not expect this invitation, ignore this email."
+    },
+    "emailChange": {
+      "subject": "Confirm your new email",
+      "heading": "Confirm the email change",
+      "body": "Follow the link to change your {site} email from {currentEmail} to {newEmail}.",
+      "action": "Confirm the change",
+      "ignore": "If you did not ask for this change, ignore this email and consider changing your password."
+    },
+    "reauthentication": {
+      "subject": "Your confirmation code",
+      "heading": "Confirm it's you",
+      "body": "Enter this code in {site} to confirm the change.",
+      "ignore": "If you did not ask for it, change your password."
+    }
+  },
   "Metadata": {
     "signIn": "Sign in",
     "signUp": "Sign up",
@@ -247,6 +421,11 @@
     "onboarding": "Create an account",
     "invitation": "Invitation",
     "members": "Members",
+    "settingsProfile": "Profile",
+    "settingsPreferences": "Preferences",
+    "settingsAccount": "Account settings",
+    "adminAccounts": "Accounts · Admin",
+    "adminUsers": "Users · Admin",
     "privacyPolicy": "Privacy Policy",
     "termsOfUse": "Terms of Use"
   },
@@ -271,5 +450,24 @@
       "contactTitle": "3. Contact",
       "contact": "Questions about these terms: add your contact address here."
     }
+  },
+  "Projects": {
+    "nav": "Projects",
+    "title": "Projects",
+    "description": "Projects of {account}.",
+    "name": "Project name",
+    "descriptionField": "Description",
+    "nameRequired": "Enter the project name.",
+    "create": "Create project",
+    "created": "Project {name} created.",
+    "createFailed": "Could not create the project. Try again.",
+    "empty": "No projects yet.",
+    "loadFailed": "Could not load the projects.",
+    "remove": "Delete {name}",
+    "removeTitle": "Delete {name}?",
+    "removeBody": "The project is deleted for everyone in the account.",
+    "removeConfirm": "Delete",
+    "removed": "Project {name} deleted.",
+    "removeFailed": "Could not delete the project. Try again."
   }
 }

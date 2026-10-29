@@ -24,6 +24,11 @@ describe("authErrorMessage", () => {
     expect(reported.events).toHaveLength(1);
   });
 
+  it("explains a send-email hook that did not answer, and reports it", () => {
+    expect(authErrorMessage({ code: "hook_timeout", status: 422 }, englishT)).toBe("We could not send the email. Try again in a few minutes.");
+    expect(reported.events).toHaveLength(1);
+  });
+
   it("does not report expected outcomes", () => {
     authErrorMessage({ code: "invalid_credentials", status: 400 }, englishT);
     authErrorMessage({ name: "AuthRetryableFetchError", status: 0 }, englishT);

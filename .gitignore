@@ -9,6 +9,8 @@ next-env.d.ts
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
 
 # env: only the example is committed
 .env*

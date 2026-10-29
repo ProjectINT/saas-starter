@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { reported } from "@/core/errors/testing";
 import { englishT } from "@/core/i18n/testing";
 
 import { createMembersStore, inviteErrorFields } from "./members-store";
@@ -12,9 +13,11 @@ const supabase = vi.hoisted(() => ({
 }));
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), danger: vi.fn() }));
+const createInvitation = vi.hoisted(() => vi.fn());
 
 vi.mock("@/core/supabase/client", () => ({ createClient: () => supabase }));
 vi.mock("@heroui/react", () => ({ toast }));
+vi.mock("./invitation-actions", () => ({ createInvitation }));
 
 // A PostgREST query builder: every filter returns the builder, awaiting it gives the rows.
 supabase.from.mockImplementation((table: string) => {
@@ -80,7 +83,7 @@ describe("members list", () => {
 });
 
 describe("invite form", () => {
-  it("validates the email before calling the RPC", async () => {
+  it("validates the email before inviting", async () => {
     const { invite } = setup().proxy;
 
     expect(await invite.submit()).toMatchObject({ success: false });
@@ -88,11 +91,11 @@ describe("invite form", () => {
 
     invite.email.value = "bob@";
     expect(invite.email.errorMessage).toBe("Enter a valid email address.");
-    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(createInvitation).not.toHaveBeenCalled();
   });
 
   it("sends the normalized email and shows the link once created", async () => {
-    supabase.rpc.mockResolvedValue({ data: "t".repeat(43), error: null });
+    createInvitation.mockResolvedValue({ token: "t".repeat(43), emailSent: true });
 
     const { invite } = setup().proxy;
 
@@ -100,18 +103,39 @@ describe("invite form", () => {
     invite.role.value = "admin";
 
     expect(await invite.submit()).toEqual({ success: true, result: undefined });
-    expect(supabase.rpc).toHaveBeenCalledWith("create_invitation", {
-      p_account_id: "acc-1",
-      p_email: "carol@example.com",
-      p_role: "admin",
-    });
+    expect(createInvitation).toHaveBeenCalledWith("acc-1", "carol@example.com", "admin");
     expect(invite.link.value).toBe(`/invite/${"t".repeat(43)}`);
+    expect(invite.emailSent.value).toBe(true);
     // The invitations list reloads.
     expect(supabase.from).toHaveBeenCalledWith("account_invitations");
   });
 
+  it("keeps the link when the email could not be sent", async () => {
+    createInvitation.mockResolvedValue({ token: "t".repeat(43), emailSent: false });
+
+    const { invite } = setup().proxy;
+
+    invite.email.value = "carol@example.com";
+    await invite.submit();
+
+    expect(invite.link.value).toBe(`/invite/${"t".repeat(43)}`);
+    expect(invite.emailSent.value).toBe(false);
+  });
+
+  it("reports a failed action and shows a generic error", async () => {
+    createInvitation.mockRejectedValue(new Error("Failed to fetch"));
+
+    const { invite } = setup().proxy;
+
+    invite.email.value = "carol@example.com";
+    await invite.submit();
+
+    expect(invite.formError.value).toBe("Something went wrong. Try again.");
+    expect(reported.events).toHaveLength(1);
+  });
+
   it("shows RPC errors under the field they concern until it changes", async () => {
-    supabase.rpc.mockResolvedValue({ data: null, error: { code: "23505", message: "already_member" } });
+    createInvitation.mockResolvedValue({ error: { code: "23505", message: "already_member" } });
 
     const { invite } = setup().proxy;
 
@@ -124,19 +148,23 @@ describe("invite form", () => {
     invite.email.value = "bobby@example.com";
     expect(invite.email.isInvalid).toBeFalsy();
 
-    supabase.rpc.mockResolvedValue({ data: null, error: { code: "22023", message: "invalid_role" } });
+    createInvitation.mockResolvedValue({ error: { code: "22023", message: "invalid_role" } });
     await invite.submit();
     expect(invite.role.errorMessage).toBe("This role can't be given.");
 
-    supabase.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "not_allowed" } });
+    createInvitation.mockResolvedValue({ error: { code: "42501", message: "not_allowed" } });
     invite.role.value = "admin";
     await invite.submit();
     expect(invite.formError.value).toBe("You don't have permission to do that.");
     expect(invite.email.isInvalid).toBeFalsy();
+
+    createInvitation.mockResolvedValue({ error: { code: "PT429", message: "invitation_limit_reached" } });
+    await invite.submit();
+    expect(invite.formError.value).toBe("Too many invitations. Revoke unused ones or try again tomorrow.");
   });
 
   it("starts over on reset", async () => {
-    supabase.rpc.mockResolvedValue({ data: null, error: { code: "23505", message: "already_member" } });
+    createInvitation.mockResolvedValue({ error: { code: "23505", message: "already_member" } });
 
     const { invite } = setup().proxy;
 
@@ -145,7 +173,7 @@ describe("invite form", () => {
     await invite.submit();
     invite.reset();
 
-    expect(invite.values).toMatchObject({ email: "", role: "member", emailError: "", formError: "", link: "" });
+    expect(invite.values).toMatchObject({ email: "", role: "member", emailError: "", formError: "", link: "", emailSent: false });
     expect(invite.revalidate).toBe(false);
     expect(invite.email.isInvalid).toBeFalsy();
   });

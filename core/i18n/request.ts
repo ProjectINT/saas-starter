@@ -1,7 +1,6 @@
 import { getRequestConfig } from "next-intl/server";
 
-import { TIME_ZONE } from "./config";
-import { requestLocale } from "./locale";
+import { requestLocale, requestTimeZone } from "./locale";
 import { loadMessages } from "./messages";
 import { messageFallback, reportIntlError } from "./report";
 import { supportedLocale } from "./negotiate";
@@ -17,7 +16,7 @@ export default getRequestConfig(async ({ locale: explicitLocale }) => {
   return {
     locale,
     messages: await loadMessages(locale),
-    timeZone: TIME_ZONE,
+    timeZone: await requestTimeZone(),
     onError: reportIntlError,
     getMessageFallback: messageFallback,
   };

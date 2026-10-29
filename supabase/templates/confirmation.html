@@ -1,5 +1,0 @@
-<!-- Sign-up confirmation. Links to /auth/confirm, which verifies the token on the server, so it works in any browser. -->
-<h2>Confirm your email</h2>
-<p>Follow the link to confirm {{ .Email }} and finish signing up:</p>
-<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Confirm email</a></p>
-<p>The link works once and expires in an hour. If you did not sign up, ignore this email.</p>

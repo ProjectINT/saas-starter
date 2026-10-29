@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_path text CHECK (char_length(avatar_path) <= 1024),
   locale      text CHECK (char_length(locale) <= 35 AND locale ~ '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$'),
   timezone    text CHECK (char_length(timezone) <= 64),
+  welcome_email_sent_at timestamptz,
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
@@ -17,6 +18,7 @@ COMMENT ON COLUMN public.profiles.email IS 'Copy of auth.users.email, kept in sy
 COMMENT ON COLUMN public.profiles.avatar_path IS 'Storage object path, not a URL.';
 COMMENT ON COLUMN public.profiles.locale IS 'Preferred UI/email language (BCP 47), e.g. en, ru, pt-BR. Set from sign-up metadata, at sign-in and by the language switcher; which tags the app supports is decided in core/i18n/config.ts.';
 COMMENT ON COLUMN public.profiles.timezone IS 'IANA time zone, e.g. Europe/Berlin.';
+COMMENT ON COLUMN public.profiles.welcome_email_sent_at IS 'When the welcome email went out (core/email/welcome.ts); set once by the server.';
 
 CREATE TRIGGER set_updated_at
 BEFORE UPDATE ON public.profiles

@@ -64,6 +64,7 @@ function InviteDialogContent({ invite, onClose }: { invite: Invite; onClose: () 
     return (
       <InviteLink
         email={normalizeEmail(form.email.value)}
+        emailSent={form.emailSent.value}
         path={form.link.value}
         onClose={onClose}
         onInviteAnother={() => form.reset()}
@@ -158,11 +159,12 @@ function InviteForm({ invite, onClose }: { invite: Invite; onClose: () => void }
 }
 
 /**
- * The link is shown once: only its hash is stored. Email delivery comes with
- * the email module; until then the inviter passes the link on.
+ * The link is shown once: only its hash is stored. It has usually gone out by
+ * email already; if sending failed, the inviter passes it on.
  */
-function InviteLink({ email, path, onClose, onInviteAnother }: {
+function InviteLink({ email, emailSent, path, onClose, onInviteAnother }: {
   email: string;
+  emailSent: boolean;
   path: string;
   onClose: () => void;
   onInviteAnother: () => void;
@@ -182,10 +184,12 @@ function InviteLink({ email, path, onClose, onInviteAnother }: {
   return (
     <>
       <Modal.Header>
-        <Modal.Heading>{t("Members.invite.createdTitle")}</Modal.Heading>
+        <Modal.Heading>{emailSent ? t("Members.invite.sentTitle") : t("Members.invite.createdTitle")}</Modal.Heading>
       </Modal.Header>
       <Modal.Body className="flex flex-col gap-4">
-        <p className="text-sm text-muted">{t("Members.invite.created", { email })}</p>
+        {emailSent
+          ? <p className="text-sm text-muted">{t("Members.invite.sent", { email })}</p>
+          : <Notice status="warning">{t("Members.invite.created", { email })}</Notice>}
         <TextField
           isReadOnly
           aria-label={t("Members.invite.link")}

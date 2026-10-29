@@ -1,5 +1,0 @@
-<!-- Password reset. /auth/confirm signs the user in and opens /reset-password. -->
-<h2>Reset your password</h2>
-<p>Follow the link to set a new password for {{ .Email }}:</p>
-<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Set a new password</a></p>
-<p>The link works once and expires in an hour. If you did not ask for it, ignore this email: your password stays the same.</p>

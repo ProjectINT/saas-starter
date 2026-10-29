@@ -32,12 +32,49 @@ const captchaSiteKeyIssue = {
 
 export const publicEnvSchema = z.object(publicEnvShape).refine(captchaSiteKeyIsSet, captchaSiteKeyIssue);
 
+// "v1,whsec_<base64>" (Standard Webhooks); several separated by "|" while rotating.
+const hookSecret = /^v1,whsec_[A-Za-z0-9+/]+={0,2}$/;
+
 export const serverEnvSchema = z
   .object({
     ...publicEnvShape,
     SUPABASE_SECRET_KEY: z.string().min(1),
+
+    // Origin for links in emails the app sends (invitations, welcome). On
+    // Vercel it defaults to the deployment's URL; locally to localhost:3000.
+    SITE_URL: z.url().optional(),
+    VERCEL_ENV: z.string().min(1).optional(),
+    VERCEL_URL: z.string().min(1).optional(),
+    VERCEL_BRANCH_URL: z.string().min(1).optional(),
+    VERCEL_PROJECT_PRODUCTION_URL: z.string().min(1).optional(),
+
+    // Email delivery (core/email). console only logs: for CI and trying the app.
+    EMAIL_PROVIDER: z.enum(["smtp", "resend", "console"]),
+    // Sender, e.g. "Acme <noreply@acme.com>".
+    EMAIL_FROM: z.string().min(3),
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+    // "true": TLS from the start (port 465); otherwise STARTTLS when the server offers it.
+    SMTP_SECURE: z.enum(["true", "false"]).optional(),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASS: z.string().min(1).optional(),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    // Supabase Auth Send Email Hook (app/api/auth/send-email): the secret from
+    // the hook settings. Without it the route refuses every request.
+    SEND_EMAIL_HOOK_SECRET: z
+      .string()
+      .refine((value) => value.split("|").every((secret) => hookSecret.test(secret)), "must look like v1,whsec_<base64>")
+      .optional(),
   })
-  .refine(captchaSiteKeyIsSet, captchaSiteKeyIssue);
+  .refine(captchaSiteKeyIsSet, captchaSiteKeyIssue)
+  .refine((env) => env.EMAIL_PROVIDER !== "smtp" || (!!env.SMTP_HOST && !!env.SMTP_PORT), {
+    path: ["SMTP_HOST"],
+    message: "and SMTP_PORT are required when EMAIL_PROVIDER is smtp",
+  })
+  .refine((env) => env.EMAIL_PROVIDER !== "resend" || !!env.RESEND_API_KEY, {
+    path: ["RESEND_API_KEY"],
+    message: "is required when EMAIL_PROVIDER is resend",
+  });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

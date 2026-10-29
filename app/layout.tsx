@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { getLocale, getMessages, getTimeZone, getTranslations } from "next-intl/server";
 
 import { siteConfig } from "@/core/config/site";
 import { IntlProvider } from "@/core/i18n/intl-provider";
@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
+  const [locale, timeZone, messages] = await Promise.all([getLocale(), getTimeZone(), getMessages()]);
 
   return (
     // next-themes sets the theme class on <html> before hydration.
@@ -35,6 +35,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <IntlProvider
           locale={locale}
           messages={clientMessages(messages)}
+          timeZone={timeZone}
         >
           <Providers>{children}</Providers>
         </IntlProvider>

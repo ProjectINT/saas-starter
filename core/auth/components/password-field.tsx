@@ -13,16 +13,20 @@ interface PasswordFieldProps {
   value?: string;
   onChange?: (value: string) => void;
   validate?: (value: string) => string | null;
+  /** Controlled validation (palistor forms): set both instead of `validate`. */
+  isInvalid?: boolean;
+  errorMessage?: string;
 }
 
 /** Required password input with a show/hide toggle. */
-export function PasswordField({ label, name, autoComplete, description, value, onChange, validate }: PasswordFieldProps) {
+export function PasswordField({ label, name, autoComplete, description, value, onChange, validate, isInvalid, errorMessage }: PasswordFieldProps) {
   const t = useTranslations("Auth");
   const [isVisible, setIsVisible] = useState(false);
 
   return (
     <TextField
       isRequired
+      isInvalid={isInvalid}
       name={name}
       validate={validate}
       value={value}
@@ -47,7 +51,7 @@ export function PasswordField({ label, name, autoComplete, description, value, o
         </InputGroup.Suffix>
       </InputGroup>
       {description && <Description>{description}</Description>}
-      <FieldError />
+      <FieldError>{errorMessage}</FieldError>
     </TextField>
   );
 }

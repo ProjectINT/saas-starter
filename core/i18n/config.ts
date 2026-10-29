@@ -24,11 +24,29 @@ export const LOCALE_COOKIE = "NEXT_LOCALE";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 /**
- * Time zone for formatting dates on the server and in the browser alike, so
- * both render the same text. User time zones (profiles.timezone) come with
- * the profile settings.
+ * Time zone for formatting dates when the user has not chosen one. The
+ * request's zone (TIME_ZONE_COOKIE, from profiles.timezone) is used on the
+ * server and in the browser alike, so both render the same text.
  */
-export const TIME_ZONE = "UTC";
+export const DEFAULT_TIME_ZONE = "UTC";
+
+/** Set from the preferences page (and from the profile at sign-in); read on every request. */
+export const TIME_ZONE_COOKIE = "NEXT_TIMEZONE";
+
+/** An IANA zone name the runtime knows ("Europe/Berlin"); also accepts "UTC". */
+export function isTimeZone(value: unknown): value is string {
+  if (typeof value !== "string" || value === "" || value.length > 64) {
+    return false;
+  }
+
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export const isLocale = (value: unknown): value is Locale =>
   typeof value === "string" && (LOCALES as readonly string[]).includes(value);

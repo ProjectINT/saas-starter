@@ -5,10 +5,10 @@ import type { Messages } from "next-intl";
 import { DEFAULT_LOCALE, type Locale } from "./config";
 
 /**
- * Namespaces read only on the server (page titles, legal texts). The root
- * layout leaves them out of the messages sent to the browser.
+ * Namespaces read only on the server (page titles, legal texts, emails). The
+ * root layout leaves them out of the messages sent to the browser.
  */
-export const SERVER_NAMESPACES = ["Metadata", "Legal"] as const satisfies (keyof Messages)[];
+export const SERVER_NAMESPACES = ["Metadata", "Legal", "Emails"] as const satisfies (keyof Messages)[];
 
 type MessageTree = { [key: string]: string | MessageTree };
 

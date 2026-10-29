@@ -97,17 +97,43 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "avatar_path": string | null,"created_at": string,"email": string | null,"first_name": string | null,"id": string,"last_name": string | null,"locale": string | null,"timezone": string | null,"updated_at": string
+                    "avatar_path": string | null,"created_at": string,"email": string | null,"first_name": string | null,"id": string,"last_name": string | null,"locale": string | null,"timezone": string | null,"updated_at": string,"welcome_email_sent_at": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "avatar_path"?: string | null,"created_at"?: string,"email"?: string | null,"first_name"?: string | null,"id": string,"last_name"?: string | null,"locale"?: string | null,"timezone"?: string | null,"updated_at"?: string
+                    "avatar_path"?: string | null,"created_at"?: string,"email"?: string | null,"first_name"?: string | null,"id": string,"last_name"?: string | null,"locale"?: string | null,"timezone"?: string | null,"updated_at"?: string,"welcome_email_sent_at"?: string | null
                   }
                   Update: {
-                    "avatar_path"?: string | null,"created_at"?: string,"email"?: string | null,"first_name"?: string | null,"id"?: string,"last_name"?: string | null,"locale"?: string | null,"timezone"?: string | null,"updated_at"?: string
+                    "avatar_path"?: string | null,"created_at"?: string,"email"?: string | null,"first_name"?: string | null,"id"?: string,"last_name"?: string | null,"locale"?: string | null,"timezone"?: string | null,"updated_at"?: string,"welcome_email_sent_at"?: string | null
                   }
                   Relationships: [
                     
+                  ]
+                },"projects": {
+                  Row: {
+                    "account_id": string,"created_at": string,"created_by": string | null,"description": string,"id": string,"name": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"description"?: string,"id"?: string,"name": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"description"?: string,"id"?: string,"name"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "projects_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "projects_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"role_permissions": {
                   Row: {
@@ -146,6 +172,19 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"admin_list_accounts":
+{ Args: { "p_limit"?: number,"p_offset"?: number,"p_search"?: string }; Returns: {
+              "created_at": string,"deactivated_at": string,"id": string,"member_count": number,"name": string,"owner_email": string,"slug": string,"total_count": number
+            }[]
+                           },
+"admin_list_users":
+{ Args: { "p_limit"?: number,"p_offset"?: number,"p_search"?: string }; Returns: {
+              "account_count": number,"banned_until": string,"created_at": string,"email": string,"email_confirmed": boolean,"id": string,"is_platform_admin": boolean,"last_sign_in_at": string,"name": string,"total_count": number
+            }[]
+                           },
+"admin_set_account_active":
+{ Args: { "p_account_id": string,"p_active": boolean }; Returns: undefined
+                           },
 "change_member_role":
 { Args: { "p_account_id": string,"p_role": Database["public"]['Enums']["account_role"],"p_user_id": string }; Returns: undefined
                            },
@@ -179,6 +218,9 @@ isOneToOne: false
 { Args: { "p_token": string }; Returns: {
               "account_name": string,"email": string,"expires_at": string,"id": string,"inviter_name": string,"role": Database["public"]['Enums']["account_role"],"status": string
             }[]
+                           },
+"is_platform_admin":
+{ Args: Record<PropertyKey, never>; Returns: boolean
                            },
 "leave_account":
 { Args: { "p_account_id": string }; Returns: undefined

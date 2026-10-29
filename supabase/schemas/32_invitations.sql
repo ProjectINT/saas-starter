@@ -10,8 +10,12 @@
 -- never by the token alone. Errors carry a stable key as the message:
 --   not_authenticated, not_allowed (42501); invitation_not_found (P0002);
 --   already_member (23505); invalid_role, invitation_closed,
---   invitation_expired (22023); account_invitations_email_format (23514,
---   check constraint).
+--   invitation_expired (22023); invitation_limit_reached (PT429, HTTP 429);
+--   account_invitations_email_format (23514, check constraint).
+--
+-- Each invitation sends an email to an address the inviter chose, and anyone
+-- can sign up and create an account: the limits in create_invitation keep it
+-- from becoming a way to send bulk email.
 
 CREATE OR REPLACE FUNCTION private.invitation_status(p_invitation public.account_invitations)
 RETURNS text
@@ -105,6 +109,24 @@ BEGIN
     AND declined_at IS NULL
     AND revoked_at IS NULL;
 
+  -- At most 50 pending invitations per account, and 50 sent per inviter a
+  -- day across all accounts (re-invites included). Checked after the
+  -- replacement above, so re-inviting at the limit still works.
+  IF (
+    SELECT count(*)
+    FROM public.account_invitations i
+    WHERE i.account_id = p_account_id
+      AND private.invitation_status(i) = 'pending'
+  ) >= 50
+  OR (
+    SELECT count(*)
+    FROM public.account_invitations i
+    WHERE i.invited_by = v_user_id
+      AND i.created_at > now() - interval '1 day'
+  ) >= 50 THEN
+    RAISE EXCEPTION 'invitation_limit_reached' USING ERRCODE = 'PT429';
+  END IF;
+
   -- 32 random bytes as base64url without padding (43 characters).
   v_token := translate(encode(extensions.gen_random_bytes(32), 'base64'), '+/=', '-_');
 
@@ -129,7 +151,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.create_invitation(uuid, text, public.account_role) IS
-'Invites an email to the account with a role not above the caller''s; replaces an open invitation for the same email. Returns the link token; it is not stored and cannot be read again. Valid for 7 days. Errors: not_allowed, invalid_role, already_member, account_invitations_email_format.';
+'Invites an email to the account with a role not above the caller''s; replaces an open invitation for the same email. Returns the link token; it is not stored and cannot be read again. Valid for 7 days. At most 50 pending per account and 50 per inviter a day. Errors: not_allowed, invalid_role, already_member, invitation_limit_reached, account_invitations_email_format.';
 
 CREATE OR REPLACE FUNCTION private.revoke_invitation(p_invitation_id uuid)
 RETURNS void

@@ -49,11 +49,12 @@ const CONSTRAINT_ERRORS: Record<string, { field: "nameError" | "slugError"; mess
 };
 
 /**
- * Maps a create_account error (PostgREST: unique_violation 23505 or
- * check_violation 23514, constraint name in the message) to the field it
- * concerns, or to the whole form.
+ * Maps a create_account error, or an error of an update of the account
+ * (PostgREST: unique_violation 23505 or check_violation 23514, constraint
+ * name in the message), to the field it concerns, or to the whole form with
+ * `fallback` (reported: it is not an expected outcome).
  */
-export function createAccountErrorFields(error: { code?: string; message: string }, t: Translate) {
+export function createAccountErrorFields(error: { code?: string; message: string }, t: Translate, fallback = t("Accounts.create.failed")) {
   const errors = { nameError: "", slugError: "", formError: "" };
 
   if (error.code === "23505" || error.code === "23514") {
@@ -68,7 +69,7 @@ export function createAccountErrorFields(error: { code?: string; message: string
 
   captureException(error, { source: "create_account" });
 
-  return { ...errors, formError: t("Accounts.create.failed") };
+  return { ...errors, formError: fallback };
 }
 
 async function createAccount(values: AccountValues, store: CreateAccountStoreApi) {

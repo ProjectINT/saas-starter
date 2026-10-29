@@ -1,50 +1,37 @@
 "use client";
 
-import type { Permission } from "../permissions.generated";
-import type { Messages } from "next-intl";
-
 import { cn } from "@heroui/react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { accountMembersPath, accountPath } from "@/core/config/routes";
+import { accountSectionPath } from "@/core/config/routes";
+import { ACCOUNT_NAVIGATION, visibleItems } from "@/core/navigation/registry";
 
 import { useAccount } from "./account-provider";
 
-interface NavItem {
-  label: keyof Messages["Navigation"];
-  href: (slug: string) => string;
-  /** Shown only with this permission. */
-  permission?: Permission;
-}
-
-// The settings phase replaces this with a configurable sidebar.
-const NAV_ITEMS: NavItem[] = [
-  { label: "overview", href: accountPath },
-  { label: "members", href: accountMembersPath, permission: "members.view" },
-];
-
+/** Tabs of the account frame, from the navigation registry (core items + modules/index.ts). */
 export function AccountNav() {
-  const t = useTranslations("Navigation");
+  const t = useTranslations();
   const { account, can } = useAccount();
   const pathname = usePathname();
 
   return (
     <nav
-      aria-label={t("account")}
+      aria-label={t("Navigation.account")}
       className="flex gap-1 overflow-x-auto px-2 sm:px-4"
     >
-      {NAV_ITEMS.filter((item) => !item.permission || can(item.permission)).map((item) => {
-        const href = item.href(account.slug);
-        const isActive = pathname === href;
+      {visibleItems(ACCOUNT_NAVIGATION, can).map((item) => {
+        const href = accountSectionPath(account.slug, item.segment);
+        // The home tab is active only on the home page; the others also on pages below them.
+        const isActive = item.segment ? pathname === href || pathname.startsWith(`${href}/`) : pathname === href;
 
         return (
           <NextLink
             key={href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "border-b-2 px-3 py-2 text-sm transition-colors",
+              "border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors",
               isActive ? "border-accent font-medium text-foreground" : "border-transparent text-muted hover:text-foreground"
             )}
             href={href}

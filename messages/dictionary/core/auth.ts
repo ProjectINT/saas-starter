@@ -79,6 +79,7 @@ export const Auth = {
     session_expired: { word: "Your session has expired. Sign in again." },
     reauthentication_needed: { word: "Sign in again to change your password." },
     network: { word: "Cannot reach the server. Check your connection and try again." },
+    email_send_failed: { word: "We could not send the email. Try again in a few minutes." },
     unknown: { word: "Something went wrong. Try again." },
   },
 } satisfies DictionarySection;

@@ -27,6 +27,7 @@ export const Navigation = {
   account: { word: "Account", context: "Label of the tab bar inside an account, for screen readers" },
   overview: { word: "Overview", context: "Tab: account home page" },
   members: { word: "Members", context: "Tab: list of people in the account" },
+  settings: { word: "Settings", context: "Tab: settings of the account and of the user" },
 } satisfies DictionarySection;
 
 export const Validation = {
@@ -63,5 +64,7 @@ export const RpcErrors = {
   invitation_closed: { word: "This invitation has already been used or withdrawn." },
   invitation_expired: { word: "This invitation has expired. Ask for a new one." },
   account_invitations_email_format: { word: "Enter a valid email address." },
+  invitation_limit_reached: { word: "Too many invitations. Revoke unused ones or try again tomorrow." },
+  account_not_found: { word: "This account does not exist." },
   fallback: { word: "Something went wrong. Try again." },
 } satisfies DictionarySection;
